@@ -14,7 +14,7 @@
   <a href="#white_check_mark-requirements">Requisitos</a> &#xa0; | &#xa0;
   <a href="#checkered_flag-starting">Start</a> &#xa0; | &#xa0;
   <a href="#memo-license">Licença</a> &#xa0; | &#xa0;
-  <a href="https://github.com/{{YOUR_GITHUB_USERNAME}}" target="_blank">Autor</a>
+  <a href="https://github.com/JY-Labtech" target="_blank">Autor</a>
 </p>
 
 <br>
@@ -127,12 +127,7 @@ This project is under license from MIT. For more details, see the [LICENSE](LICE
 
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/jhonathanqz"><img src="https://avatars.githubusercontent.com/u/74057391?s=96&v=4" width="100px;" alt=""/><br /><sub><b>Jhonathan C. Queiroz</b></sub></a><br /> <a href="https://github.com/jhonathanqz" title="Autor">😎</a></td>
-
-  </tr>
-
-   <tr>
-    <td align="center"><a href="https://github.com/jhonathanqz"><img src="https://avatars.githubusercontent.com/u/185066406?s=200&v=4" width="100px;" alt=""/><br /><sub><b>JY Labtech</b></sub></a><br /> <a href="https://github.com/JY-Labtech" title="Autor"></a></td>
+    <td align="center"><a href="https://github.com/JY-Labtech"><img src="https://avatars.githubusercontent.com/u/185066406?s=200&v=4" width="100px;" alt=""/><br /><sub><b>JY Labtech</b></sub></a><br /> <a href="https://github.com/JY-Labtech" title="Autor"></a></td>
   </tr>
 
 </table>
