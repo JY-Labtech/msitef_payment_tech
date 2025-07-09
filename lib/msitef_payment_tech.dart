@@ -1,33 +1,32 @@
 import 'package:msitef_payment_tech/licence/licence_service.dart';
-
 import 'payments/payment.dart';
 
 export 'payments/model/tef_transaction_model.dart';
 export 'payments/model/tef_transaction_response.dart';
 
 class MSitefPaymentTech {
-  MSitefPaymentTech._();
+  // Instância única privada (singleton)
+  static final MSitefPaymentTech _instance = MSitefPaymentTech._internal();
 
-  Payment? _payment;
+  late final Payment? _payment;
 
-  static MSitefPaymentTech? _instance;
+  // Construtor privado
+  MSitefPaymentTech._internal();
 
-//GET instance from MSitefPaymentTech
-  static MSitefPaymentTech instance() {
-    _instance ??= MSitefPaymentTech._();
-    return _instance!;
-  }
+  // Getter para acessar a instância
+  static MSitefPaymentTech get instance => _instance;
 
-//Function to init payment and register handler from notify
+  /// Inicializa o pagamento e verifica a licença
   Future<Payment> initPayment({
     required String licenceKey,
   }) async {
     try {
-      final result = await LicenceService().checkLicence(licenceKey: licenceKey);
-      if (!result) {
+      final isValid = await LicenceService().checkLicence(licenceKey: licenceKey);
+      if (!isValid) {
         throw Exception('Invalid licence key. Please check your licence key.');
       }
-      _payment ??= Payment();
+
+      _payment = Payment();
       return _payment!;
     } catch (e) {
       print('Error initializing payment: $e');
@@ -35,10 +34,13 @@ class MSitefPaymentTech {
     }
   }
 
+  /// Acesso ao pagamento (deve ser inicializado antes)
   Payment get payment {
-    if (_payment == null) {
-      throw Exception('Payment not initialized. Please call initPayment() before accessing payment.');
+    if (!_isPaymentInitialized) {
+      throw Exception('Payment not initialized. Call initPayment() first.');
     }
     return _payment!;
   }
+
+  bool get _isPaymentInitialized => _payment != null;
 }
