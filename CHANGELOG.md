@@ -2,3 +2,4 @@
 
 - Primeiro release do Plugin.
 - Funções: cŕedito, débito, pix, voucher, ativar terminal.
+- Adicionado função para validar licença
