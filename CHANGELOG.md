@@ -1,3 +1,10 @@
+## 1.0.1
+
+- Primeiro release do Plugin.
+- Funções: cŕedito, débito, pix, voucher, ativar terminal.
+- Adicionado função para validar licença
+- Configurar classe singleton
+
 ## 1.0.0
 
 - Primeiro release do Plugin.
