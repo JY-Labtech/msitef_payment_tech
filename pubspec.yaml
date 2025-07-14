@@ -1,17 +1,17 @@
 name: msitef_payment_tech
 description: Plugin Flutter para integrar sua aplicação com o SDK Android do MSitef para meios de pagamento.
-version: 1.0.2
+version: 1.0.3
 repository: https://github.com/JY-Labtech/msitef_payment_tech
 
 environment:
-  sdk: ">=2.18.5 <4.0.0"
-  flutter: ">=2.5.0"
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
-  check_licence_tech: ^0.0.4
+  check_licence_tech: ^0.0.5
 
 dev_dependencies:
   json_serializable: ^6.7.1
