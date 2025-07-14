@@ -1,46 +1,311 @@
-import 'package:msitef_payment_tech/licence/licence_service.dart';
-import 'payments/payment.dart';
+import 'package:check_licence_tech/check_licence_tech.dart';
 
-export 'payments/model/tef_transaction_model.dart';
-export 'payments/model/tef_transaction_response.dart';
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+
+import '../payments/enum/sitef_modality.dart';
+import '../payments/helper/tef_helper.dart';
+import '../payments/model/tef_transaction_model.dart';
+import '../payments/model/tef_transaction_response.dart';
+import 'licence/constants/licence_constants.dart';
+import 'payments/model/params/transaction_params.dart';
 
 class MSitefPaymentTech {
-  // Instância única privada (singleton)
   static final MSitefPaymentTech _instance = MSitefPaymentTech._internal();
 
-  late final Payment? _payment;
+  _Payment? _payment;
 
-  // Construtor privado
   MSitefPaymentTech._internal();
 
-  // Getter para acessar a instância
   static MSitefPaymentTech get instance => _instance;
 
-  /// Inicializa o pagamento e verifica a licença
-  Future<Payment> initPayment({
+  Future<String> getSerialNumber() async => await CheckLicenceTech().getSerialNumber();
+
+  Future<bool> _checkLicence({
     required String licenceKey,
   }) async {
-    try {
-      final isValid = await LicenceService().checkLicence(licenceKey: licenceKey);
-      if (!isValid) {
-        throw Exception('Invalid licence key. Please check your licence key.');
-      }
-
-      _payment = Payment();
-      return _payment!;
-    } catch (e) {
-      print('Error initializing payment: $e');
-      rethrow;
+    // Simulate a licence check
+    // In a real implementation, this would involve an API call or similar
+    if (licenceKey.isEmpty) {
+      return false; // Invalid licence key
     }
+
+    final licence = CheckLicenceTech();
+    final resultLicence = await licence.checkLicence(
+      licenceKey,
+      url: licenceCheck,
+    );
+    if (!resultLicence) {
+      throw Exception('Invalid licence key. Please check your licence key.');
+    }
+
+    // Simulate a successful licence check
+    return resultLicence;
   }
 
-  /// Acesso ao pagamento (deve ser inicializado antes)
-  Payment get payment {
-    if (!_isPaymentInitialized) {
+  Future<_Payment> initPayment({
+    required String licenceKey,
+  }) async {
+    final isValid = await _checkLicence(licenceKey: licenceKey);
+    if (!isValid) {
+      _payment = null;
+      throw Exception('Invalid licence key. Please check your licence key.');
+    }
+
+    _payment = _Payment();
+    return _payment!;
+  }
+
+  _Payment get payment {
+    if (_payment == null) {
       throw Exception('Payment not initialized. Call initPayment() first.');
     }
     return _payment!;
   }
 
-  bool get _isPaymentInitialized => _payment != null;
+  bool get isLicenceValid => _payment != null;
+}
+
+//Fixed channel name
+// ignore: constant_identifier_names
+const CHANNEL_NAME = "msitef_payment_tech";
+
+class _Payment {
+  final channel = const MethodChannel(CHANNEL_NAME);
+
+  final Map<SitefModalityMSitef, String> _modalityMap = {
+    SitefModalityMSitef.undefined: '0',
+    SitefModalityMSitef.creditCard: '3',
+    SitefModalityMSitef.debitCard: '2',
+    SitefModalityMSitef.pix: '122',
+    SitefModalityMSitef.digitalWallet: '122',
+    SitefModalityMSitef.cancellation: '200',
+  };
+
+  Future<TefTransactionResponseMSitef?> mSitefTransaction({
+    required TransactionParams transactionParams,
+  }) async {
+    try {
+      Map<String, dynamic> lineToMethodChannel({
+        int? modalidade,
+        String? value,
+        String? couponNumber,
+        String? dateFiscal,
+        String? hourFiscal,
+        String? operador,
+        String? params,
+        String? ipSitef,
+        String? storeId,
+        String? terminalId,
+        String? paramsAdd,
+        String? companyDocument,
+        String? comExternal,
+        String? isDoubleValidation,
+        String? otp,
+        String? enabledTransactions,
+        String? automationDocument,
+        String? tokenRegistroTls,
+      }) {
+        return {
+          'modalidade': modalidade,
+          'value': value,
+          'couponNumber': couponNumber,
+          'date': dateFiscal,
+          'hour': hourFiscal,
+          'operator': operador,
+          'restricoes': params,
+          'ipSitef': ipSitef,
+          'storeId': storeId,
+          'terminalId': terminalId,
+          'parametrosAdc': paramsAdd,
+          'companyDocument': companyDocument,
+          'comExternal': comExternal,
+          'isDoubleValidation': isDoubleValidation,
+          'otp': otp,
+          'enabledTransactions': enabledTransactions,
+          'automationDocument': automationDocument,
+          'tokenRegistroTls': tokenRegistroTls,
+        };
+      }
+
+      final modality = int.tryParse(_modalityMap[transactionParams.modalidade.modality] ?? '0') ?? 0;
+
+      final paramsTransaction = lineToMethodChannel(
+        modalidade: modality,
+        value: transactionParams.value,
+        couponNumber: transactionParams.couponNumber,
+        dateFiscal: transactionParams.dateFiscal,
+        hourFiscal: transactionParams.hourFiscal,
+        operador: transactionParams.operador,
+        ipSitef: transactionParams.ipSitef,
+        storeId: transactionParams.storeId,
+        terminalId: transactionParams.terminalId,
+        paramsAdd: transactionParams.paramsAdd,
+        companyDocument: transactionParams.companyDocument,
+        comExternal: transactionParams.comExternal,
+        isDoubleValidation: transactionParams.isDoubleValidation,
+        otp: transactionParams.otp,
+        enabledTransactions: transactionParams.enabledTransactions,
+        automationDocument: transactionParams.automationDocument,
+        tokenRegistroTls: transactionParams.tokenRegistroTls ?? '',
+      );
+
+      final resultTransaction = await channel.invokeMethod(
+        'transactionMsitef',
+        paramsTransaction,
+      );
+
+      final resultJson = json.decode(resultTransaction);
+
+      final model = TefTransactionModel.fromMap(resultJson);
+
+      return _fetchTefTransactionResponse(
+        model: model,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<TefTransactionResponseMSitef?> mSitefMenu({
+    required String ipSitef,
+    required String storeId,
+    required String terminalId,
+    required String companyDocument,
+    required String comExternal,
+    required String isDoubleValidation,
+    required String otp,
+    required String enabledTransactions,
+    required String automationDocument,
+    String? tokenRegistroTls,
+  }) async {
+    try {
+      Map<String, dynamic> lineToMethodChannel({
+        String? ipSitef,
+        String? storeId,
+        String? terminalId,
+        String? companyDocument,
+        String? comExternal,
+        String? isDoubleValidation,
+        String? otp,
+        String? enabledTransactions,
+        String? automationDocument,
+        String? tokenRegistroTlsParams,
+      }) {
+        return {
+          'ipSitef': ipSitef,
+          'storeId': storeId,
+          'terminalId': terminalId,
+          'companyDocument': companyDocument,
+          'comExternal': comExternal,
+          'isDoubleValidation': isDoubleValidation,
+          'otp': otp,
+          'enabledTransactions': enabledTransactions,
+          'automationDocument': automationDocument,
+          'tokenRegistroTls': tokenRegistroTlsParams,
+        };
+      }
+
+      final paramsTransaction = lineToMethodChannel(
+        ipSitef: ipSitef,
+        storeId: storeId,
+        terminalId: terminalId,
+        companyDocument: companyDocument,
+        comExternal: comExternal,
+        isDoubleValidation: isDoubleValidation,
+        otp: otp,
+        enabledTransactions: enabledTransactions,
+        automationDocument: automationDocument,
+        tokenRegistroTlsParams: tokenRegistroTls,
+      );
+
+      final resultTransaction = await channel.invokeMethod(
+        'menuMSitef',
+        paramsTransaction,
+      );
+
+      final resultJson = json.decode(resultTransaction);
+
+      final model = TefTransactionModel.fromMap(resultJson);
+
+      return _fetchTefTransactionResponse(
+        model: model,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<TefTransactionResponseMSitef?> customAction({
+    required Map<String, dynamic> params,
+  }) async {
+    try {
+      final resultTransaction = await channel.invokeMethod(
+        'action',
+        params,
+      );
+
+      final resultJson = json.decode(resultTransaction);
+
+      final model = TefTransactionModel.fromMap(resultJson);
+
+      return _fetchTefTransactionResponse(
+        model: model,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  TefTransactionResponseMSitef _fetchTefTransactionResponse({
+    required TefTransactionModel model,
+    String? dateTime,
+  }) {
+    int? resultCode;
+    if (model.resultCode != null) {
+      resultCode = model.resultCode;
+      if (model.resultCode == 0 && (model.tefNSUAuthorizing == '' || model.tefNSUAuthorizing == null)) {
+        resultCode = 99999;
+      }
+    }
+    final errorTransaction = TefHelper.checkErrorTransactionTEF(model.resultCode!);
+
+    return TefTransactionResponseMSitef(
+      id: model.id ?? 0,
+      tefCodPayment: model.tefCodPayment ?? '',
+      tefDescPayment: model.tefDescPayment ?? '',
+      tefInstitution: model.tefInstitution ?? '',
+      tefCodInstitution: model.tefCodInstitution ?? '',
+      tefCardType: model.tefCardType ?? '',
+      binCard: model.binCard ?? '',
+      tefDigitalWalletId: model.tefDigitalWalletId ?? '',
+      tefDigitalWalletType: model.tefDigitalWalletType ?? '',
+      tefDigitalWalletName: model.tefDigitalWalletName ?? '',
+      tefNSUSitef: model.tefNSUSitef ?? '',
+      tefNSUAuthorizing: model.tefNSUAuthorizing ?? '',
+      tefCodAuthorization: model.tefCodAuthorization ?? '',
+      establishmentReceipt: model.establishmentReceipt ?? '',
+      customerReceipt: model.customerReceipt ?? '',
+      transactionConfirmation: model.transactionConfirmation ?? '',
+      couponModality: model.couponModality ?? '',
+      transactionDateTime: dateTime ?? model.transactionDateTime ?? '',
+      cancellationMode: model.cancellationMode ?? '',
+      amountToPay: model.amountToPay ?? '',
+      amountReceived: model.amountReceived ?? '',
+      returnValue: model.returnValue ?? '',
+      paymentAmount: model.paymentAmount ?? '',
+      codCancellationMode: model.codCancellationMode ?? '',
+      resultCode: resultCode ?? 999999,
+      compDadosConf: model.compDadosConf ?? '',
+      codTrans: model.codTrans ?? '',
+      redeAut: model.redeAut ?? '',
+      codeDocumentCanceled: model.codDocumentCancelled ?? '',
+      amountCancelled: model.amountCancelled ?? '',
+      cardNumber: model.cardNumber ?? '',
+      cardNumberLast: model.cardNumberLast ?? '',
+      errorTransaction: resultCode == 0 ? null : errorTransaction[resultCode],
+      typeFields: model.typeFields,
+    );
+  }
 }
