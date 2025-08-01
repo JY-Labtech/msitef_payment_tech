@@ -13,8 +13,11 @@ import 'package:msitef_payment_tech/payments/model/tef_transaction_response.dart
 final class Payment {
   final MethodChannel channel;
   final String licenceKey;
-  bool _isValidLicence = false;
   final CheckLicenceTech _licence = CheckLicenceTech.instance();
+
+  // Cache da instância criada
+  static Payment? _instance;
+  static bool _isLicenceValidated = false;
 
   final Map<SitefModalityMSitef, String> _modalityMap = {
     SitefModalityMSitef.undefined: '0',
@@ -25,18 +28,29 @@ final class Payment {
     SitefModalityMSitef.cancellation: '200',
   };
 
-  Payment._({required this.channel, required this.licenceKey});
+  Payment._({
+    required this.channel,
+    required this.licenceKey,
+  });
 
   static Future<Payment> create({
     required MethodChannel channel,
     required String licenceKey,
   }) async {
+    // Se já existe instância e licença validada, retorna ela diretamente
+    if (_instance != null && _isLicenceValidated) {
+      return _instance!;
+    }
+
     final payment = Payment._(channel: channel, licenceKey: licenceKey);
-    final valid = await payment._checkLicence();
-    if (!valid) {
+    _isLicenceValidated = await payment._checkLicence();
+    if (!_isLicenceValidated) {
+      _instance = null; // Reseta a instância se a licença não for válida
+      _isLicenceValidated = false; // Reseta o estado de validação
       throw Exception('Invalid licence key. Please check your licence key.');
     }
-    payment._isValidLicence = true;
+    _instance = payment; // Armazena a instância criada
+    _isLicenceValidated = true;
     return payment;
   }
 
@@ -46,7 +60,7 @@ final class Payment {
   }
 
   void _ensureLicence() {
-    if (!_isValidLicence) {
+    if (!_isLicenceValidated) {
       throw Exception('Invalid licence key. Please check your licence key.');
     }
   }

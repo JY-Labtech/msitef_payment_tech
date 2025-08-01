@@ -13,17 +13,16 @@
   <a href="#rocket-technologies">Tecnologias</a> &#xa0; | &#xa0;
   <a href="#white_check_mark-requirements">Requisitos</a> &#xa0; | &#xa0;
   <a href="#checkered_flag-starting">Start</a> &#xa0; | &#xa0;
-  <a href="#memo-license">Licença</a> &#xa0; | &#xa0;
   <a href="https://github.com/JY-Labtech" target="_blank">Autor</a>
 </p>
 
 <br>
 
-<a href="https://buymeacoffee.com/jhonathanqr" target="_blank">
-  <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Book" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;">
-</a>
-
 [![Github Badge](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white&link=https://github.com/jhonathanqz)](https://github.com/jhonathanqz)
+
+> ⚠️ Plugin não oficial!
+
+### ⚠️⚠️⚠️ Esse plugin não funciona com PROXY!!! ⚠️⚠️⚠️
 
 ## :dart: Sobre
 
@@ -118,10 +117,6 @@ MSitefPaymentTech.instance().payment.mSitefTransaction(
   <img src="https://dev.softwareexpress.com.br/assets/images/image11-4b9d553a8b1775258c997ad9930a6726.png" height=400 alt="MSitef" />
 
 </br>
-
-## :memo: License
-
-This project is under license from MIT. For more details, see the [LICENSE](LICENSE.md) file.
 
 </br>
 
