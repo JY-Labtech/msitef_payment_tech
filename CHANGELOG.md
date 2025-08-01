@@ -1,3 +1,7 @@
+## 1.1.0
+
+- Corrige bug ao validar licença
+
 ## 1.0.6
 
 - Primeiro release do Plugin.
