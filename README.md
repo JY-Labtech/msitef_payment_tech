@@ -54,7 +54,7 @@ Para utilizar o plugin, basta chamar alguma de suas funções abaixo:
 Débito
 
 ```
-MSitefPaymentTech.instance().payment.mSitefTransaction(
+MSitefPaymentTech.I.payment.mSitefTransaction(
                          transactionParams: TransactionParams(
                           modalidade: MSitefType.debit,
                           value: '10',
@@ -73,7 +73,7 @@ MSitefPaymentTech.instance().payment.mSitefTransaction(
 Crédito:
 
 ```
-MSitefPaymentTech.instance().payment.mSitefTransaction(
+MSitefPaymentTech.I.payment.mSitefTransaction(
                         transactionParams: TransactionParams(
                           modalidade: MSitefType.credit,
                           value: '10',
@@ -92,7 +92,7 @@ MSitefPaymentTech.instance().payment.mSitefTransaction(
 Pix:
 
 ```
-MSitefPaymentTech.instance().payment.mSitefTransaction(
+MSitefPaymentTech.I.payment.mSitefTransaction(
                         transactionParams: TransactionParams(
                           modalidade: MSitefType.pix,
                           value: '10',

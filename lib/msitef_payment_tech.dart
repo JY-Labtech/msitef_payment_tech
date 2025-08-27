@@ -3,19 +3,21 @@ import 'package:msitef_payment_tech/payments/payment.dart';
 
 import 'licence/constants/licence_constants.dart';
 
-class MSitefPaymentTech {
+final class MSitefPaymentTech {
   static MSitefPaymentTech? _instance;
 
   Payment? _payment;
 
   MSitefPaymentTech._internal();
 
-  static MSitefPaymentTech get instance {
+  static MSitefPaymentTech get I {
     _instance ??= MSitefPaymentTech._internal();
     return _instance!;
   }
 
   Future<String> getSerialNumber() async => await CheckLicenceTech.instance().getSerialNumber();
+
+  Future<bool> wipeLicenceCache() async => await CheckLicenceTech.instance().wipeLicence();
 
   Future<Payment> initPayment({
     required String licenceKey,

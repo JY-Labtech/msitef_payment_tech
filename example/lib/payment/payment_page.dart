@@ -50,7 +50,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ElevatedButton(
                 child: const Text("Débito"),
                 onPressed: () {
-                  MSitefPaymentTech.instance.payment.mSitefTransaction(
+                  MSitefPaymentTech.I.payment.mSitefTransaction(
                     transactionParams: TransactionParams(
                       modalidade: MSitefType.debit,
                       value: '10',
@@ -70,7 +70,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ElevatedButton(
                 child: const Text("Crédito"),
                 onPressed: () {
-                  MSitefPaymentTech.instance.payment.mSitefTransaction(
+                  MSitefPaymentTech.I.payment.mSitefTransaction(
                     transactionParams: TransactionParams(
                       modalidade: MSitefType.credit,
                       value: '15',
@@ -90,7 +90,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ElevatedButton(
                 child: const Text("Pix"),
                 onPressed: () {
-                  MSitefPaymentTech.instance.payment.mSitefTransaction(
+                  MSitefPaymentTech.I.payment.mSitefTransaction(
                     transactionParams: TransactionParams(
                       modalidade: MSitefType.pix,
                       value: '20',
@@ -110,7 +110,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ElevatedButton(
                 child: const Text("Voucher"),
                 onPressed: () {
-                  MSitefPaymentTech.instance.payment.mSitefTransaction(
+                  MSitefPaymentTech.I.payment.mSitefTransaction(
                     transactionParams: TransactionParams(
                       modalidade: MSitefType.voucher,
                       value: '30',
