@@ -1,6 +1,11 @@
 ## 1.1.0
 
 - Corrige bug ao validar licença
+- Adiciona método para limpar cache de credenciais locais
+
+## 1.1.0
+
+- Corrige bug ao validar licença
 
 ## 1.0.6
 
