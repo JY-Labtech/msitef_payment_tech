@@ -29,6 +29,20 @@
 Plugin Flutter para facilitar integração com o TEF do `MSitef`.
 Necessário ter instalado o `MSitef` para que funcione corretamente. Para obter o `.apk` é necessário entrar em contato com a sua distribuidora do TEF.
 
+## 🔐 Licenciamento
+
+Para adquirir uma licença, cadastre-se no site [Licença JY Labtech](https://licenca.jylabtech.com.br).  
+Cada licença é válida por terminal. Após a compra, será gerada uma chave `licenceKey` vinculada ao terminal.
+
+##### Obervação: A partir da versão 1.0.0 não é mais necessário passar o `licenceKey` como parâmetro.
+
+A partir da versão 2.0.0 é necessário adicionar as chaves no seu arquivo `local.properties` na raiz da pasta `android`.
+
+```
+licenceKey=<sua_licenca>
+licenceInternalKey=aHR0cHM6Ly9wb3MtcGF5bWVudHMtYXBpLTU3NzQ2NDIzNTQwOC5zb3V0aGFtZXJpY2EtZWFzdDEucnVuLmFwcC9wb3MtcGF5bWVudHMvbGljZW5jZS9jaGVjaw==
+```
+
 ## :sparkles: Funcionalidades
 
 :heavy_check_mark: Cartão de crédito

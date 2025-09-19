@@ -1,9 +1,7 @@
 // ignore_for_file: constant_identifier_names
 import 'dart:convert';
 
-import 'package:check_licence_tech/check_licence_tech.dart';
 import 'package:flutter/services.dart';
-import 'package:msitef_payment_tech/licence/constants/licence_constants.dart';
 import 'package:msitef_payment_tech/payments/enum/sitef_modality.dart';
 import 'package:msitef_payment_tech/payments/helper/tef_helper.dart';
 import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
@@ -12,12 +10,9 @@ import 'package:msitef_payment_tech/payments/model/tef_transaction_response.dart
 
 final class Payment {
   final MethodChannel channel;
-  final String licenceKey;
-  final CheckLicenceTech _licence = CheckLicenceTech.instance();
 
   // Cache da instância criada
   static Payment? _instance;
-  static bool _isLicenceValidated = false;
 
   final Map<SitefModalityMSitef, String> _modalityMap = {
     SitefModalityMSitef.undefined: '0',
@@ -30,45 +25,25 @@ final class Payment {
 
   Payment._({
     required this.channel,
-    required this.licenceKey,
   });
 
-  static Future<Payment> create({
+  static Payment create({
     required MethodChannel channel,
-    required String licenceKey,
-  }) async {
+  }) {
     // Se já existe instância e licença validada, retorna ela diretamente
-    if (_instance != null && _isLicenceValidated) {
+    if (_instance != null) {
       return _instance!;
     }
 
-    final payment = Payment._(channel: channel, licenceKey: licenceKey);
-    _isLicenceValidated = await payment._checkLicence();
-    if (!_isLicenceValidated) {
-      _instance = null; // Reseta a instância se a licença não for válida
-      _isLicenceValidated = false; // Reseta o estado de validação
-      throw Exception('Invalid licence key. Please check your licence key.');
-    }
+    final payment = Payment._(channel: channel);
+
     _instance = payment; // Armazena a instância criada
-    _isLicenceValidated = true;
     return payment;
-  }
-
-  Future<bool> _checkLicence() async {
-    if (licenceKey.isEmpty) return false;
-    return await _licence.checkLicence(licenceKey, url: licenceCheck);
-  }
-
-  void _ensureLicence() {
-    if (!_isLicenceValidated) {
-      throw Exception('Invalid licence key. Please check your licence key.');
-    }
   }
 
   Future<TefTransactionResponseMSitef?> mSitefTransaction({
     required TransactionParams transactionParams,
   }) async {
-    _ensureLicence();
     try {
       final modality = int.tryParse(_modalityMap[transactionParams.modalidade.modality] ?? '0') ?? 0;
 
@@ -114,7 +89,6 @@ final class Payment {
     required String automationDocument,
     String? tokenRegistroTls,
   }) async {
-    _ensureLicence();
     try {
       final paramsTransaction = _lineToMethodChannel(
         ipSitef: ipSitef,
@@ -142,7 +116,6 @@ final class Payment {
   Future<TefTransactionResponseMSitef?> customAction({
     required Map<String, dynamic> params,
   }) async {
-    _ensureLicence();
     try {
       final resultTransaction = await channel.invokeMethod('action', params);
       final resultJson = json.decode(resultTransaction);
