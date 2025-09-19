@@ -2,7 +2,30 @@ group 'br.com.jylabtech.msitef_payment_tech'
 version '1.0'
 
 buildscript {
-    ext.kotlin_version = '1.6.10'
+    ext {
+        kotlin_version = '1.9.0'
+
+        localProps = new Properties()
+        fileName = 'local.properties'
+        if (project.rootProject.file(fileName).exists()) {
+            localProps.load(new FileInputStream(rootProject.file(fileName)))
+        }
+
+        // Licence Keys
+        licenceKey = System.env.LICENCE_KEY ?: localProps.getProperty("licenceKey") ?: ""
+        licenceInternalKey = System.env.LICENCE_INTERNAL_KEY ?: localProps.getProperty("licenceInternalKey") ?: ""
+
+        if (!licenceKey || licenceKey == "") {
+            throw new GradleException("LicenceKey não encontrado!!")
+        }
+
+        if (!licenceInternalKey || licenceInternalKey == "") {
+            throw new GradleException("LicenceInternalKey não encontrado!!")
+        }
+
+        println "licenceKey: $licenceKey"
+        println "licenceInternalKey: $licenceInternalKey"
+    }
 
     repositories {
         google()
@@ -10,7 +33,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.3'
+        classpath 'com.android.tools.build:gradle:8.7.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -29,18 +52,27 @@ android {
     compileSdkVersion 31
     buildToolsVersion '28.0.3'
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     lintOptions {
         disable 'InvalidPackage'
         checkReleaseBuilds false
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    packagingOptions {
+        exclude 'META-INF/api_release.kotlin_module'
+        exclude 'META-INF/client_release.kotlin_module'
     }
 
     sourceSets {
@@ -49,6 +81,8 @@ android {
 
     defaultConfig {
         minSdkVersion 23
+        buildConfigField "String", "LICENCE_KEY", "\"${licenceKey}\""
+        buildConfigField "String", "LICENCE_INTERNAL_KEY", "\"${licenceInternalKey}\""
     }
 }
 
@@ -63,4 +97,8 @@ dependencies{
     implementation('com.journeyapps:zxing-android-embedded:4.3.0') { transitive = false }
 
     implementation 'com.google.zxing:core:3.5.1'
+
+    // Dependencias para módulo de licença (sem kapt)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha03")
 }
