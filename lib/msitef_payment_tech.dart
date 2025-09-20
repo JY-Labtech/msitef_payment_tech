@@ -1,4 +1,3 @@
-import 'package:check_licence_tech/check_licence_tech.dart';
 import 'package:msitef_payment_tech/payments/payment.dart';
 
 import 'licence/constants/licence_constants.dart';
@@ -15,17 +14,11 @@ final class MSitefPaymentTech {
     return _instance!;
   }
 
-  Future<String> getSerialNumber() async => await CheckLicenceTech.instance().getSerialNumber();
-
-  Future<bool> wipeLicenceCache() async => await CheckLicenceTech.instance().wipeLicence();
-
-  Future<Payment> initPayment({
-    required String licenceKey,
-  }) async {
+  Payment initPayment() {
     if (_payment != null) {
       return _payment!;
     }
-    _payment = await Payment.create(channel: channel, licenceKey: licenceKey);
+    _payment = Payment.create(channel: channel);
     return _payment!;
   }
 
