@@ -95,13 +95,19 @@ public class MSitefPaymentTechPlugin
   }
 
   @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) throws Exception {
     _result = result;
-      checkSmart();
+     try {
+         checkSmart();
 
-    if(mSitefSmart != null) {
-       mSitefSmart.initPayment(call, result);
-    }
+         if(mSitefSmart != null) {
+             mSitefSmart.initPayment(call, result);
+         }
+     } catch (Exception e) {
+         Log.d("print", "*Erro onMethodCall: " + e.getMessage());
+         _result.success(e.getMessage());
+         throw new Exception(e.getMessage());
+     }
   }
   
   @Override
