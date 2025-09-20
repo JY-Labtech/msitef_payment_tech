@@ -1,4 +1,4 @@
-## 🔥 2.0.0 – Breaking Change
+## 🔥 2.0.0+1 – Breaking Change
 
 ⚠️ Attention: In this version, there is an important change in the way payments are initialized.
 
