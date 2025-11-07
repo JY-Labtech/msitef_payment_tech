@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:msitef_payment_tech/msitef_payment_tech.dart';
 
 import 'payment/payment_page.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MSitefPaymentTech.I.initPayment(
+    licenceKey: 'SUA_LICENCE_KEY',
+    licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+  );
   runApp(const MyApp());
 }
 

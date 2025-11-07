@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.library' version '8.9.1'
+}
+
+def flutterSdkPath = System.getenv("FLUTTER_SDK")
+if (flutterSdkPath == null || flutterSdkPath.trim().isEmpty()) {
+    throw new GradleException("Defina a variável de ambiente FLUTTER_SDK apontando para o SDK do Flutter para compilar o AAR.")
+}
+
+def flutterEngineDir = file("${flutterSdkPath}/bin/cache/artifacts/engine")
+if (!flutterEngineDir.exists()) {
+    throw new GradleException("Artefatos do Flutter não encontrados em ${flutterEngineDir}. Execute 'flutter precache --android'.")
+}
+
+def flutterJar = null
+flutterEngineDir.eachFileRecurse { candidate ->
+    if (candidate.name == "flutter.jar" && flutterJar == null) {
+        flutterJar = candidate
+    }
+}
+
+if (flutterJar == null) {
+    throw new GradleException("Não foi possível localizar flutter.jar. Execute 'flutter precache' e tente novamente.")
+}
+
+group = "br.com.jylabtech.msitef_payment_tech"
+version = "1.0.0"
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+android {
+    namespace "br.com.jylabtech.msitef_payment_tech"
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 23
+        consumerProguardFiles "consumer-rules.pro"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+dependencies {
+    compileOnly files(flutterJar)
+
+    implementation 'androidx.annotation:annotation:1.8.1'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha05'
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+    implementation('com.journeyapps:zxing-android-embedded:4.3.0') { transitive = false }
+    implementation 'com.google.zxing:core:3.5.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
+

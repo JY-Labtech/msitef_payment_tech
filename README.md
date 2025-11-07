@@ -20,7 +20,11 @@
 
 [![Github Badge](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white&link=https://github.com/jhonathanqz)](https://github.com/jhonathanqz)
 
-> ⚠️ Plugin não oficial!
+---
+
+## 🚨 Aviso
+
+> **Este plugin é _não oficial_** e foi desenvolvido de forma independente para facilitar a integração de pagamentos via SDK do MSitef em dispositivos Android.
 
 ### ⚠️⚠️⚠️ Esse plugin não funciona com PROXY!!! ⚠️⚠️⚠️
 
@@ -32,16 +36,29 @@ Necessário ter instalado o `MSitef` para que funcione corretamente. Para obter 
 ## 🔐 Licenciamento
 
 Para adquirir uma licença, cadastre-se no site [Licença JY Labtech](https://licenca.jylabtech.com.br).  
-Cada licença é válida por terminal. Após a compra, será gerada uma chave `licenceKey` vinculada ao terminal.
+Cada licença é válida por terminal. Após a compra, você receberá duas chaves:
 
-##### Obervação: A partir da versão 1.0.0 não é mais necessário passar o `licenceKey` como parâmetro.
+- `licenceKey`: identificação pública da licença do terminal.
+- `licenceInternalKey`: endereço seguro usado pelo módulo nativo para validação.
 
-A partir da versão 2.0.0 é necessário adicionar as chaves no seu arquivo `local.properties` na raiz da pasta `android`.
+> ✅ **Importante:** as chaves **devem ser fornecidas em tempo de execução** ao chamar `MSitefPaymentTech.I.initPayment`. Não armazene as chaves em `local.properties` ou em arquivos de código-fonte versionados. Prefira buscar os valores de um backend seguro, variáveis de ambiente criptografadas ou serviços de configuração remota.
 
+### Inicialização do plugin
+
+Antes de utilizar qualquer operação de TEF, inicialize o plugin informando as chaves:
+
+```dart
+import 'package:msitef_payment_tech/msitef_payment_tech.dart';
+
+Future<void> bootstrapMSitef() async {
+  await MSitefPaymentTech.I.initPayment(
+    licenceKey: 'SUA_LICENCE_KEY',
+    licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+  );
+}
 ```
-licenceKey=<sua_licenca>
-licenceInternalKey=***REMOVIDO***
-```
+
+Execute a inicialização uma única vez (por exemplo, no `main()` ou no `initState` do seu `Widget` raiz). O módulo nativo valida, criptografa e armazena a licença com `EncryptedSharedPreferences` para reutilizações futuras no dispositivo.
 
 ## :sparkles: Funcionalidades
 
@@ -63,66 +80,44 @@ Para que o plugin funcione corretamente é necessário ter o aplicativo `MSitef`
 
 ## :checkered_flag: Starting
 
-Para utilizar o plugin, basta chamar alguma de suas funções abaixo:
+1. **Inicialize o plugin** com as chaves de licença:
 
-Débito
-
-```
-MSitefPaymentTech.I.payment.mSitefTransaction(
-                         transactionParams: TransactionParams(
-                          modalidade: MSitefType.debit,
-                          value: '10',
-                          couponNumber: DateTime.now().toIso8601String(),
-                          dateFiscal: '2021-09-01',
-                          hourFiscal: '12:00:00',
-                          operador: 'teste',
-                          ipSitef: '192.168.0.165',
-                          storeId: '00000000',
-                          terminalId: '00000001',
-                          companyDocument: '00000000000000',
-                          automationDocument: '00000000000000',
-                        ),)
+```dart
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MSitefPaymentTech.I.initPayment(
+    licenceKey: 'SUA_LICENCE_KEY',
+    licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+  );
+  runApp(const MyApp());
+}
 ```
 
-Crédito:
+2. **Dispare a transação desejada** usando o objeto `payment`:
 
-```
-MSitefPaymentTech.I.payment.mSitefTransaction(
-                        transactionParams: TransactionParams(
-                          modalidade: MSitefType.credit,
-                          value: '10',
-                          couponNumber: DateTime.now().toIso8601String(),
-                          dateFiscal: '2021-09-01',
-                          hourFiscal: '12:00:00',
-                          operador: 'teste',
-                          ipSitef: '192.168.0.165',
-                          storeId: '00000000',
-                          terminalId: '00000001',
-                          companyDocument: '00000000000000',
-                          automationDocument: '00000000000000',
-                        ),)
-```
+   ```dart
+   MSitefPaymentTech.I.payment.mSitefTransaction(
+     transactionParams: TransactionParams(
+       modalidade: MSitefType.debit,
+       value: '10',
+       couponNumber: DateTime.now().toIso8601String(),
+       dateFiscal: '2021-09-01',
+       hourFiscal: '12:00:00',
+       operador: 'teste',
+       ipSitef: '192.168.0.165',
+       storeId: '00000000',
+       terminalId: '00000001',
+       companyDocument: '00000000000000',
+       automationDocument: '00000000000000',
+     ),
+   );
+   ```
 
-Pix:
+   - Para crédito, altere `modalidade` para `MSitefType.credit`.
+   - Para PIX, utilize `MSitefType.pix`.
+   - Para cancelamentos, utilize `SitefModalityMSitef.cancellation` e informe os campos obrigatórios do comprovante.
 
-```
-MSitefPaymentTech.I.payment.mSitefTransaction(
-                        transactionParams: TransactionParams(
-                          modalidade: MSitefType.pix,
-                          value: '10',
-                          couponNumber: DateTime.now().toIso8601String(),
-                          dateFiscal: '2021-09-01',
-                          hourFiscal: '12:00:00',
-                          operador: 'teste',
-                          ipSitef: '192.168.0.165',
-                          storeId: '00000000',
-                          terminalId: '00000001',
-                          companyDocument: '00000000000000',
-                          automationDocument: '00000000000000',
-                        ),)
-```
-
-#### Todas as transações iram retornar suas informações na classe `TefTransactionResponseMSitef`.
+3. **Consuma o retorno** através do objeto `TefTransactionResponseMSitef`, contendo códigos, comprovantes e metadados da transação.
 
 </br>
 

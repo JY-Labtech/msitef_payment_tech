@@ -1,4 +1,5 @@
 // ignore_for_file: constant_identifier_names
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -23,29 +24,45 @@ final class Payment {
     SitefModalityMSitef.cancellation: '200',
   };
 
+  String _licenceKey;
+  String _licenceInternalKey;
+  bool _licenceConfigured;
+
   Payment._({
     required this.channel,
-  });
+    required String licenceKey,
+    required String licenceInternalKey,
+  })  : _licenceKey = licenceKey,
+        _licenceInternalKey = licenceInternalKey,
+        _licenceConfigured = false;
 
-  static Payment create({
+  static Future<Payment> create({
     required MethodChannel channel,
-  }) {
-    // Se já existe instância e licença validada, retorna ela diretamente
-    if (_instance != null) {
-      return _instance!;
+    required String licenceKey,
+    required String licenceInternalKey,
+  }) async {
+    if (_instance == null) {
+      _instance = Payment._(
+        channel: channel,
+        licenceKey: licenceKey,
+        licenceInternalKey: licenceInternalKey,
+      );
+    } else {
+      _instance!._updateLicenceKeys(licenceKey, licenceInternalKey);
     }
 
-    final payment = Payment._(channel: channel);
-
-    _instance = payment; // Armazena a instância criada
-    return payment;
+    await _instance!._scheduleLicenceSync();
+    return _instance!;
   }
 
   Future<TefTransactionResponseMSitef?> mSitefTransaction({
     required TransactionParams transactionParams,
   }) async {
     try {
-      final modality = int.tryParse(_modalityMap[transactionParams.modalidade.modality] ?? '0') ?? 0;
+      await _ensureLicenceSynced();
+      final modality = int.tryParse(
+              _modalityMap[transactionParams.modalidade.modality] ?? '0') ??
+          0;
 
       final paramsTransaction = _lineToMethodChannel(
         modalidade: modality,
@@ -67,7 +84,8 @@ final class Payment {
         tokenRegistroTls: transactionParams.tokenRegistroTls ?? '',
       );
 
-      final resultTransaction = await channel.invokeMethod('transactionMsitef', paramsTransaction);
+      final resultTransaction =
+          await channel.invokeMethod('transactionMsitef', paramsTransaction);
       final resultJson = json.decode(resultTransaction);
       final model = TefTransactionModel.fromMap(resultJson);
 
@@ -90,6 +108,7 @@ final class Payment {
     String? tokenRegistroTls,
   }) async {
     try {
+      await _ensureLicenceSynced();
       final paramsTransaction = _lineToMethodChannel(
         ipSitef: ipSitef,
         storeId: storeId,
@@ -103,7 +122,8 @@ final class Payment {
         tokenRegistroTls: tokenRegistroTls,
       );
 
-      final resultTransaction = await channel.invokeMethod('menuMSitef', paramsTransaction);
+      final resultTransaction =
+          await channel.invokeMethod('menuMSitef', paramsTransaction);
       final resultJson = json.decode(resultTransaction);
       final model = TefTransactionModel.fromMap(resultJson);
 
@@ -117,6 +137,7 @@ final class Payment {
     required Map<String, dynamic> params,
   }) async {
     try {
+      await _ensureLicenceSynced();
       final resultTransaction = await channel.invokeMethod('action', params);
       final resultJson = json.decode(resultTransaction);
       final model = TefTransactionModel.fromMap(resultJson);
@@ -125,6 +146,35 @@ final class Payment {
     } catch (_) {
       return null;
     }
+  }
+
+  bool get hasValidLicence => _licenceConfigured;
+
+  void _updateLicenceKeys(String licenceKey, String licenceInternalKey) {
+    _licenceKey = licenceKey;
+    _licenceInternalKey = licenceInternalKey;
+    _licenceConfigured = false;
+  }
+
+  Future<void> _scheduleLicenceSync() async {
+    try {
+      await channel.invokeMethod('initPayment', {
+        'licenceKey': _licenceKey,
+        'licenceInternalKey': _licenceInternalKey,
+      });
+      _licenceConfigured = true;
+    } catch (error) {
+      _licenceConfigured = false;
+      rethrow;
+    }
+  }
+
+  Future<void> _ensureLicenceSynced() async {
+    if (_licenceConfigured) {
+      return;
+    }
+
+    await _scheduleLicenceSync();
   }
 
   Map<String, dynamic> _lineToMethodChannel({
@@ -177,7 +227,8 @@ final class Payment {
     if (resultCode == 0 && (model.tefNSUAuthorizing?.isEmpty ?? true)) {
       resultCode = 99999;
     }
-    final errorTransaction = TefHelper.checkErrorTransactionTEF(resultCode ?? 99999);
+    final errorTransaction =
+        TefHelper.checkErrorTransactionTEF(resultCode ?? 99999);
 
     return TefTransactionResponseMSitef(
       id: model.id ?? 0,
