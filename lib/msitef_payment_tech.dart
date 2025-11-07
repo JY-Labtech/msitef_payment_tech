@@ -14,22 +14,29 @@ final class MSitefPaymentTech {
     return _instance!;
   }
 
-  Payment initPayment() {
-    if (_payment != null) {
-      return _payment!;
-    }
-    _payment = Payment.create(channel: channel);
+  Future<Payment> initPayment({
+    required String licenceKey,
+    required String licenceInternalKey,
+  }) async {
+    final payment = await Payment.create(
+      channel: channel,
+      licenceKey: licenceKey,
+      licenceInternalKey: licenceInternalKey,
+    );
+    _payment = payment;
     return _payment!;
   }
 
   Payment get payment {
     if (_payment == null) {
-      throw Exception('Payment not initialized. Call initPayment() first.');
+      throw Exception(
+        'Payment not initialized. Call initPayment(licenceKey: ..., licenceInternalKey: ...) first.',
+      );
     }
     return _payment!;
   }
 
-  bool get isLicenceValid => _payment != null;
+  bool get isLicenceValid => _payment?.hasValidLicence ?? false;
 }
 
 //Fixed channel name

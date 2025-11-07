@@ -1,16 +1,21 @@
 # msitef_payment_tech_example
 
-Demonstrates how to use the msitef_payment_tech plugin.
+Aplicativo de exemplo que demonstra como inicializar o plugin com as chaves de licença e realizar transações via m-SiTef.
 
-## Getting Started
+## Passos principais
 
-This project is a starting point for a Flutter application.
+1. Defina as chaves obtidas no portal da JY Labtech no `main()` **e/ou** preencha os campos na primeira seção da tela de exemplo para reenviar as credenciais ao módulo nativo:
 
-A few resources to get you started if this is your first Flutter project:
+   ```dart
+   Future<void> main() async {
+     WidgetsFlutterBinding.ensureInitialized();
+     await MSitefPaymentTech.I.initPayment(
+       licenceKey: 'SUA_LICENCE_KEY',
+       licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+     );
+     runApp(const MyApp());
+   }
+   ```
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. A tela `PaymentPage` permite validar a licença novamente (útil para testar chaves diferentes) e só habilita os botões de transação após a confirmação do nativo.
+3. Ajuste os parâmetros (IP, loja, terminal, etc.) de acordo com o ambiente fornecido pela adquirente antes de enviar para produção.

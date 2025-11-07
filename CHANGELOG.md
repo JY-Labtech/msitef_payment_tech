@@ -1,18 +1,18 @@
-## 🔥 2.0.0+1 – Breaking Change
+## 🔥 2.1.0 – Breaking Change
 
-⚠️ Attention: In this version, there is an important change in the way payments are initialized.
+⚠️ Atenção: a partir desta versão o plugin volta a exigir que as chaves de licença sejam informadas pelo código.
 
-🛠️ What changed:
+### O que mudou
 
-Breaking Change: The initPayment method no longer requires the licenceKey to be passed as a parameter.
+- `MSitefPaymentTech.I.initPayment` agora exige os parâmetros obrigatórios `licenceKey` e `licenceInternalKey`.
+- As chaves **não** são mais lidas de `local.properties`. Elas devem ser fornecidas em tempo de execução (ex.: backend seguro, variáveis de ambiente ou gerenciadores de segredo).
+- O módulo nativo valida e armazena as chaves com `EncryptedSharedPreferences`, permitindo reuso local sem expor os valores no build.
 
-It is now mandatory to define the following fields in local.properties:
+### Impacto
 
-licenceKey → main licence key
-
-licenceInternalKey → internal licence key
-
-This means that any code that previously passed licenceKey directly to initPayment will need to be updated.
+- Atualize todas as chamadas para `initPayment`, fornecendo explicitamente as duas chaves.
+- Remova entradas de licença do `local.properties` do aplicativo.
+- Consulte o README para exemplos atualizados de inicialização e configuração.
 
 ## 1.1.0
 
