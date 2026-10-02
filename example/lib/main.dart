@@ -7,7 +7,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MSitefPaymentTech.I.initPayment(
     licenceKey: 'SUA_LICENCE_KEY',
-    licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+    licenceInternalKey:
+        '***REMOVIDO***',
   );
   runApp(const MyApp());
 }

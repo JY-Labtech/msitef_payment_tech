@@ -5,6 +5,8 @@ import static android.app.Activity.RESULT_OK;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,7 +14,9 @@ import androidx.annotation.Nullable;
 import com.google.gson.Gson;
 
 import br.com.jylabtech.msitef_payment_tech.core.MSitefPaymentTech;
+import br.com.jylabtech.msitef_payment_tech.licence.LicenceConfig;
 import br.com.jylabtech.msitef_payment_tech.licence.LicenceResult;
+import br.com.jylabtech.msitef_payment_tech.licence.LicenceRules;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -20,6 +24,9 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MSitefPaymentTechNativePlugin
         implements FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware, PluginRegistry.ActivityResultListener {
@@ -29,6 +36,8 @@ public class MSitefPaymentTechNativePlugin
     private static final int REQUEST_CODE_JSON_RESPONSE = 4713;
 
     private final Gson gson = new Gson();
+    private final ExecutorService licenceExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private MethodChannel channel;
     private Context context;
@@ -99,11 +108,26 @@ public class MSitefPaymentTechNativePlugin
             return;
         }
 
+        if (!MSitefPaymentTech.isBusinessMethod(call.method)) {
+            result.notImplemented();
+            return;
+        }
+
         if (!ensureDelegate(result)) {
             return;
         }
 
         if (!ensureLicenceInitialised(result)) {
+            return;
+        }
+
+        // Gate por operação: toda chamada de negócio revalida a licença (cache válido ou servidor)
+        // antes de chamar o m-SiTef. Licença inválida devolve LICENCE_ERROR e nada é executado.
+        withValidLicence(result, () -> executeOperation(call, result));
+    }
+
+    private void executeOperation(MethodCall call, Result result) {
+        if (!ensureDelegate(result)) {
             return;
         }
 
@@ -136,21 +160,66 @@ public class MSitefPaymentTechNativePlugin
             return;
         }
 
+        // licenceInternalKey é opcional: a URL efetiva é sempre a do servidor oficial da
+        // JY Labtech (LicenceConfig.resolveLicenceUrl ignora valores fora dele).
         if (licenceInternalKey == null || licenceInternalKey.trim().isEmpty()) {
-            result.error("INVALID_ARGUMENT", "licenceInternalKey é obrigatório", null);
+            licenceInternalKey = LicenceConfig.LICENCE_CHECK_URL;
+        }
+
+        final String key = licenceKey;
+        final String internalKey = licenceInternalKey;
+        delegate.updateLicenceKeys(key, internalKey);
+        cachedLicenceKey = null;
+        cachedLicenceInternalKey = null;
+
+        withValidLicence(result, () -> {
+            cachedLicenceKey = key;
+            cachedLicenceInternalKey = internalKey;
+            result.success(true);
+        });
+    }
+
+    /**
+     * Executa {@code onValid} somente com licença válida. Usa o cache local válido sem rede;
+     * caso contrário valida no servidor em background e responde na main thread.
+     */
+    private void withValidLicence(final Result result, final Runnable onValid) {
+        final MSitefPaymentTech currentDelegate = delegate;
+        if (currentDelegate == null || !currentDelegate.hasLicenceKeys()) {
+            result.error("LICENCE_NOT_INITIALIZED", "Chame initPayment com licenceKey antes de executar operações.", null);
             return;
         }
 
-        delegate.updateLicenceKeys(licenceKey, licenceInternalKey);
-        LicenceResult licenceResult = delegate.validateLicence();
-        if (licenceResult.getResult() != 0) {
-            result.error("LICENCE_ERROR", licenceResult.getErrorMessage(), null);
+        boolean cachedValid;
+        try {
+            cachedValid = currentDelegate.hasValidCachedLicence();
+        } catch (Exception e) {
+            cachedValid = false;
+        }
+        if (cachedValid) {
+            onValid.run();
             return;
         }
 
-        cachedLicenceKey = licenceKey;
-        cachedLicenceInternalKey = licenceInternalKey;
-        result.success(true);
+        licenceExecutor.execute(() -> {
+            LicenceResult licenceResult;
+            try {
+                licenceResult = currentDelegate.validateLicence();
+            } catch (Exception e) {
+                licenceResult = new LicenceResult();
+                licenceResult.setResult(LicenceRules.RESULT_ERROR);
+                licenceResult.setErrorMessage("Erro ao validar licença: " + e.getMessage());
+            }
+            final LicenceResult finalResult = licenceResult;
+            mainHandler.post(() -> {
+                if (finalResult != null && finalResult.getResult() == LicenceRules.RESULT_SUCCESS) {
+                    onValid.run();
+                } else {
+                    String message = finalResult != null ? finalResult.getErrorMessage() : null;
+                    result.error("LICENCE_ERROR", message != null ? message : "Licença inválida.", null);
+                }
+            });
+        });
     }
 
     private boolean ensureDelegate() {
@@ -177,7 +246,7 @@ public class MSitefPaymentTechNativePlugin
             return;
         }
 
-        if (delegate != null && cachedLicenceKey != null && cachedLicenceInternalKey != null) {
+        if (delegate != null && cachedLicenceKey != null) {
             delegate.updateLicenceKeys(cachedLicenceKey, cachedLicenceInternalKey);
         }
     }
@@ -187,12 +256,12 @@ public class MSitefPaymentTechNativePlugin
             return true;
         }
 
-        if (cachedLicenceKey != null && cachedLicenceInternalKey != null) {
+        if (delegate != null && cachedLicenceKey != null) {
             delegate.updateLicenceKeys(cachedLicenceKey, cachedLicenceInternalKey);
             return true;
         }
 
-        result.error("LICENCE_NOT_INITIALIZED", "Chame initPayment com licenceKey e licenceInternalKey antes de executar operações.", null);
+        result.error("LICENCE_NOT_INITIALIZED", "Chame initPayment com licenceKey antes de executar operações.", null);
         return false;
     }
 
