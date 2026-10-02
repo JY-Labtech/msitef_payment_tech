@@ -4,18 +4,21 @@ Aplicativo de exemplo que demonstra como inicializar o plugin com as chaves de l
 
 ## Passos principais
 
-1. Defina as chaves obtidas no portal da JY Labtech no `main()` **e/ou** preencha os campos na primeira seção da tela de exemplo para reenviar as credenciais ao módulo nativo:
+1. Defina as chaves obtidas no portal da JY Labtech ([portal.jylabtech.com.br](https://portal.jylabtech.com.br)) no `main()` **e/ou** preencha os campos na primeira seção da tela de exemplo para reenviar as credenciais ao módulo nativo:
 
    ```dart
    Future<void> main() async {
      WidgetsFlutterBinding.ensureInitialized();
      await MSitefPaymentTech.I.initPayment(
        licenceKey: 'SUA_LICENCE_KEY',
-       licenceInternalKey: 'SUA_LICENCE_INTERNAL_KEY',
+       licenceInternalKey:
+           'aHR0cHM6Ly9wb3J0YWwtYXBpLmp5bGFidGVjaC5jb20uYnIvcG9zLXBheW1lbnRzL2xpY2VuY2UvY2hlY2s=',
      );
      runApp(const MyApp());
    }
    ```
+
+   O `licenceInternalKey` acima é a URL `https://portal-api.jylabtech.com.br/pos-payments/licence/check` em base64. Sem internet, a licença validada fica em cache por até 7 dias.
 
 2. A tela `PaymentPage` permite validar a licença novamente (útil para testar chaves diferentes) e só habilita os botões de transação após a confirmação do nativo.
 3. Ajuste os parâmetros (IP, loja, terminal, etc.) de acordo com o ambiente fornecido pela adquirente antes de enviar para produção.

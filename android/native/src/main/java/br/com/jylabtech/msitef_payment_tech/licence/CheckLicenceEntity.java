@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 
 public class CheckLicenceEntity {
     private String id;
@@ -22,6 +23,7 @@ public class CheckLicenceEntity {
     private Date expiredAt;
     private boolean isExpired;
     private boolean isInactive;
+    private boolean isCanceled;
     private boolean isTrial;
     private String subscriptionId;
     private String checkoutType;
@@ -29,7 +31,6 @@ public class CheckLicenceEntity {
     private Date updatedAt;
     private Date savedLocalDatabaseAt;
     private String databaseVersion;
-
     private String licenceInternalKey;
 
     public void setLicenceInternalKey(String licenceInternalKey) {
@@ -40,10 +41,8 @@ public class CheckLicenceEntity {
         return licenceInternalKey;
     }
 
-    // Construtor padrão
     public CheckLicenceEntity() {}
 
-    // Getters e Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -92,6 +91,9 @@ public class CheckLicenceEntity {
     public boolean isInactive() { return isInactive; }
     public void setInactive(boolean inactive) { isInactive = inactive; }
 
+    public boolean isCanceled() { return isCanceled; }
+    public void setCanceled(boolean canceled) { isCanceled = canceled; }
+
     public boolean isTrial() { return isTrial; }
     public void setTrial(boolean trial) { isTrial = trial; }
 
@@ -113,56 +115,81 @@ public class CheckLicenceEntity {
     public String getDatabaseVersion() { return databaseVersion; }
     public void setDatabaseVersion(String databaseVersion) { this.databaseVersion = databaseVersion; }
 
-    // Construtor a partir de JSON
-    public static CheckLicenceEntity fromJson(String jsonStr) {
+    /** Datas do servidor (expiredAt, createdAt, updatedAt): horário de Brasília, sem fuso. */
+    private static SimpleDateFormat serverDateFormat() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+        sdf.setTimeZone(TimeZone.getTimeZone("America/Sao_Paulo"));
+        return sdf;
+    }
+
+    /** savedLocalDatabaseAt: gravada pelo próprio aparelho, no fuso local (formato mantido). */
+    private static SimpleDateFormat localDateFormat() {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+    }
+
+    private static String optNullableString(JSONObject json, String key) {
+        if (!json.has(key) || json.isNull(key)) {
+            return "";
+        }
+        return json.optString(key, "");
+    }
+
+    private static Date parseDate(SimpleDateFormat sdf, String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
         try {
-            JSONObject json = new JSONObject(jsonStr);
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-
-            CheckLicenceEntity entity = new CheckLicenceEntity();
-            entity.setId(json.optString("id"));
-            entity.setUid(json.optString("uid"));
-            entity.setDeviceUid(json.optString("deviceUid"));
-            entity.setDeviceSerialNumber(json.optString("deviceSerialNumber"));
-            entity.setUserUid(json.optString("userUid"));
-            entity.setProductId(json.optString("productId"));
-            entity.setProductName(json.optString("productName"));
-            entity.setProductDescription(json.optString("productDescription"));
-            entity.setIntegrationLibId(json.optString("integrationLibId"));
-            entity.setIntegrationLibName(json.optString("integrationLibName"));
-            entity.setCheckoutSessionId(json.optString("checkoutSessionId"));
-            entity.setLicenceKey(json.optString("licenceKey"));
-            entity.setLicenceEncrypt(json.optString("licenceEncrypt"));
-            entity.setExpired(json.optBoolean("isExpired"));
-            entity.setInactive(json.optBoolean("isInactive"));
-            entity.setTrial(json.optBoolean("isTrial"));
-            entity.setSubscriptionId(json.optString("subscriptionId"));
-            entity.setCheckoutType(json.optString("checkoutType"));
-            entity.setDatabaseVersion(json.optString("databaseVersion"));
-            entity.setLicenceInternalKey(json.optString("licenceInternalKey"));
-
-            String expiredAtStr = json.optString("expiredAt");
-            if (!expiredAtStr.isEmpty()) entity.setExpiredAt(sdf.parse(expiredAtStr));
-
-            String createdAtStr = json.optString("createdAt");
-            if (!createdAtStr.isEmpty()) entity.setCreatedAt(sdf.parse(createdAtStr));
-
-            String updatedAtStr = json.optString("updatedAt");
-            if (!updatedAtStr.isEmpty()) entity.setUpdatedAt(sdf.parse(updatedAtStr));
-
-            String savedLocalStr = json.optString("savedLocalDatabaseAt");
-            if (!savedLocalStr.isEmpty()) entity.setSavedLocalDatabaseAt(sdf.parse(savedLocalStr));
-
-
-
-            return entity;
+            // aceita também frações de segundo / sufixos (ex.: "2099-12-31T23:59:59.000")
+            String trimmed = value.length() > 19 ? value.substring(0, 19) : value;
+            return sdf.parse(trimmed);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
 
-    // Converte de volta para JSON
+    public static CheckLicenceEntity fromJson(String jsonStr) {
+        if (jsonStr == null) {
+            return null;
+        }
+        try {
+            JSONObject json = new JSONObject(jsonStr);
+            SimpleDateFormat serverSdf = serverDateFormat();
+            SimpleDateFormat localSdf = localDateFormat();
+
+            CheckLicenceEntity entity = new CheckLicenceEntity();
+            entity.setId(optNullableString(json, "id"));
+            entity.setUid(optNullableString(json, "uid"));
+            entity.setDeviceUid(optNullableString(json, "deviceUid"));
+            entity.setDeviceSerialNumber(optNullableString(json, "deviceSerialNumber"));
+            entity.setUserUid(optNullableString(json, "userUid"));
+            entity.setProductId(optNullableString(json, "productId"));
+            entity.setProductName(optNullableString(json, "productName"));
+            entity.setProductDescription(optNullableString(json, "productDescription"));
+            entity.setIntegrationLibId(optNullableString(json, "integrationLibId"));
+            entity.setIntegrationLibName(optNullableString(json, "integrationLibName"));
+            entity.setCheckoutSessionId(optNullableString(json, "checkoutSessionId"));
+            entity.setLicenceKey(optNullableString(json, "licenceKey"));
+            entity.setLicenceEncrypt(optNullableString(json, "licenceEncrypt"));
+            entity.setExpired(json.optBoolean("isExpired"));
+            entity.setInactive(json.optBoolean("isInactive"));
+            entity.setCanceled(json.optBoolean("isCanceled"));
+            entity.setTrial(json.optBoolean("isTrial"));
+            entity.setSubscriptionId(optNullableString(json, "subscriptionId"));
+            entity.setCheckoutType(optNullableString(json, "checkoutType"));
+            entity.setDatabaseVersion(optNullableString(json, "databaseVersion"));
+            entity.setLicenceInternalKey(optNullableString(json, "licenceInternalKey"));
+
+            entity.setExpiredAt(parseDate(serverSdf, optNullableString(json, "expiredAt")));
+            entity.setCreatedAt(parseDate(serverSdf, optNullableString(json, "createdAt")));
+            entity.setUpdatedAt(parseDate(serverSdf, optNullableString(json, "updatedAt")));
+            entity.setSavedLocalDatabaseAt(parseDate(localSdf, optNullableString(json, "savedLocalDatabaseAt")));
+
+            return entity;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public String toJson() {
         try {
             JSONObject json = new JSONObject();
@@ -181,24 +208,24 @@ public class CheckLicenceEntity {
             json.put("licenceEncrypt", licenceEncrypt);
             json.put("isExpired", isExpired);
             json.put("isInactive", isInactive);
+            json.put("isCanceled", isCanceled);
             json.put("isTrial", isTrial);
             json.put("subscriptionId", subscriptionId);
             json.put("checkoutType", checkoutType);
             json.put("databaseVersion", databaseVersion);
             json.put("licenceInternalKey", licenceInternalKey);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            if (expiredAt != null) json.put("expiredAt", sdf.format(expiredAt));
-            if (createdAt != null) json.put("createdAt", sdf.format(createdAt));
-            if (updatedAt != null) json.put("updatedAt", sdf.format(updatedAt));
-            if (savedLocalDatabaseAt != null) json.put("savedLocalDatabaseAt", sdf.format(savedLocalDatabaseAt));
+            SimpleDateFormat serverSdf = serverDateFormat();
+            SimpleDateFormat localSdf = localDateFormat();
+            if (expiredAt != null) json.put("expiredAt", serverSdf.format(expiredAt));
+            if (createdAt != null) json.put("createdAt", serverSdf.format(createdAt));
+            if (updatedAt != null) json.put("updatedAt", serverSdf.format(updatedAt));
+            if (savedLocalDatabaseAt != null) json.put("savedLocalDatabaseAt", localSdf.format(savedLocalDatabaseAt));
 
             return json.toString();
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
 }
-
 

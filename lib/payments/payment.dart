@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:msitef_payment_tech/payments/enum/sitef_modality.dart';
+import 'package:msitef_payment_tech/licence/constants/licence_constants.dart';
 import 'package:msitef_payment_tech/payments/helper/tef_helper.dart';
 import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
 import 'package:msitef_payment_tech/payments/model/tef_transaction_model.dart';
@@ -14,15 +14,6 @@ final class Payment {
 
   // Cache da instância criada
   static Payment? _instance;
-
-  final Map<SitefModalityMSitef, String> _modalityMap = {
-    SitefModalityMSitef.undefined: '0',
-    SitefModalityMSitef.creditCard: '3',
-    SitefModalityMSitef.debitCard: '2',
-    SitefModalityMSitef.pix: '122',
-    SitefModalityMSitef.digitalWallet: '122',
-    SitefModalityMSitef.cancellation: '200',
-  };
 
   String _licenceKey;
   String _licenceInternalKey;
@@ -39,7 +30,7 @@ final class Payment {
   static Future<Payment> create({
     required MethodChannel channel,
     required String licenceKey,
-    required String licenceInternalKey,
+    String licenceInternalKey = licenceCheck,
   }) async {
     if (_instance == null) {
       _instance = Payment._(
@@ -60,9 +51,8 @@ final class Payment {
   }) async {
     try {
       await _ensureLicenceSynced();
-      final modality = int.tryParse(
-              _modalityMap[transactionParams.modalidade.modality] ?? '0') ??
-          0;
+      final modality =
+          int.tryParse(transactionParams.modalidade.modality) ?? 0;
 
       final paramsTransaction = _lineToMethodChannel(
         modalidade: modality,
@@ -90,7 +80,8 @@ final class Payment {
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (_) {
+    } catch (error) {
+      _handleLicenceError(error);
       return null;
     }
   }
@@ -128,7 +119,8 @@ final class Payment {
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (_) {
+    } catch (error) {
+      _handleLicenceError(error);
       return null;
     }
   }
@@ -143,12 +135,23 @@ final class Payment {
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (_) {
+    } catch (error) {
+      _handleLicenceError(error);
       return null;
     }
   }
 
   bool get hasValidLicence => _licenceConfigured;
+
+  /// O nativo revalida a licença em toda operação. Se ela deixou de ser válida
+  /// (`LICENCE_ERROR`/`LICENCE_NOT_INITIALIZED`), a próxima operação refaz o initPayment.
+  void _handleLicenceError(Object error) {
+    if (error is PlatformException &&
+        (error.code == 'LICENCE_ERROR' ||
+            error.code == 'LICENCE_NOT_INITIALIZED')) {
+      _licenceConfigured = false;
+    }
+  }
 
   void _updateLicenceKeys(String licenceKey, String licenceInternalKey) {
     _licenceKey = licenceKey;

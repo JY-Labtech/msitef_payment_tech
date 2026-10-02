@@ -1,12 +1,11 @@
 package br.com.jylabtech.msitef_payment_tech.licence;
 
-
 public class LicenceResult {
     private String method;
     private String errorMessage;
-    private int result;
+    // Começa como erro: só vira sucesso (0) quando a licença for validada explicitamente.
+    private int result = LicenceRules.RESULT_ERROR;
     private String message;
-
     private CheckLicenceEntity licenceEntity;
 
     public void setLicenceEntity(CheckLicenceEntity entity) {
@@ -25,13 +24,28 @@ public class LicenceResult {
         this.result = value;
     }
 
-    public void setErrorMessage(String value){ this.errorMessage = value;}
+    public void setErrorMessage(String value) {
+        this.errorMessage = value;
+    }
 
-    public void setMessage(String value){this.message = value;}
+    public void setMessage(String value) {
+        this.message = value;
+    }
 
-    public String getMessage(){return this.message;}
+    public String getMessage() {
+        return this.message;
+    }
 
-    public String getMethod(){return this.method;}
-    public String getErrorMessage(){return this.errorMessage;}
-    public int getResult(){return this.result;}
+    public String getMethod() {
+        return this.method;
+    }
+
+    public String getErrorMessage() {
+        return this.errorMessage;
+    }
+
+    public int getResult() {
+        return this.result;
+    }
 }
+

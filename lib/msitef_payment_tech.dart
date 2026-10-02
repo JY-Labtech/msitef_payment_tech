@@ -14,9 +14,14 @@ final class MSitefPaymentTech {
     return _instance!;
   }
 
+  /// Configura e valida a licença no servidor da JY Labtech.
+  ///
+  /// [licenceInternalKey] é opcional (padrão: [licenceCheck]). Valores que não apontem
+  /// para o servidor oficial são ignorados pelo nativo. Lança [PlatformException]
+  /// (`LICENCE_ERROR`) se a licença for inválida, vencida, suspensa ou cancelada.
   Future<Payment> initPayment({
     required String licenceKey,
-    required String licenceInternalKey,
+    String licenceInternalKey = licenceCheck,
   }) async {
     final payment = await Payment.create(
       channel: channel,
@@ -30,7 +35,7 @@ final class MSitefPaymentTech {
   Payment get payment {
     if (_payment == null) {
       throw Exception(
-        'Payment not initialized. Call initPayment(licenceKey: ..., licenceInternalKey: ...) first.',
+        'Payment not initialized. Call initPayment(licenceKey: ...) first.',
       );
     }
     return _payment!;

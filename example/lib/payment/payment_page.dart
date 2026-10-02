@@ -17,7 +17,7 @@ class _PaymentPageState extends State<PaymentPage> {
     text: 'SUA_LICENCE_KEY',
   );
   final TextEditingController _licenceInternalKeyController = TextEditingController(
-    text: 'SUA_LICENCE_INTERNAL_KEY',
+    text: 'aHR0cHM6Ly9wb3J0YWwtYXBpLmp5bGFidGVjaC5jb20uYnIvcG9zLXBheW1lbnRzL2xpY2VuY2UvY2hlY2s=',
   );
 
   Payment? _payment;
