@@ -86,15 +86,15 @@ Execute a inicialização uma única vez (por exemplo, no `main()` ou no `initSt
 
 ### Cache offline
 
-Após uma validação bem-sucedida, o módulo nativo guarda a licença criptografada (`EncryptedSharedPreferences`) e passa a validá-la localmente, sem acessar a internet, enquanto:
+Após uma validação bem-sucedida, o módulo nativo guarda a licença criptografada (`EncryptedSharedPreferences`) A primeira operação depois de abrir o app sempre consulta o servidor, e a licença é revalidada online a cada **4 horas** de uso. Se o servidor recusar a licença (cliente bloqueado no portal, licença vencida, cancelada ou suspensa, não encontrada, aparelho desativado ou limite de aparelhos), o cache é apagado e as operações falham com `LICENCE_ERROR` na hora. Quando o servidor não responde (sem internet, timeout, 5xx), o cache é usado (e o plugin espera 5 minutos antes de tentar de novo) enquanto:
 
 - a licença continuar válida (`expiredAt` no futuro e não vencida, inativa ou cancelada);
-- a última consulta online tiver no máximo **7 dias** (e não estiver no futuro, o que indicaria relógio adulterado); e
+- a última consulta online bem-sucedida tiver no máximo **72 horas** (e não estiver no futuro, o que indicaria relógio adulterado); e
 - a `licenceKey` for a mesma da licença salva.
 
 Depois disso (ou se a `licenceKey` mudar), o cache é apagado e uma nova consulta online é obrigatória; se ela falhar, as operações ficam bloqueadas.
 
-> ℹ️ **Atualizando da 2.1.x:** um cache gravado com o `licenceInternalKey` antigo (Cloud Run) ou com qualquer endereço fora do servidor oficial não é aproveitado: na primeira operação após a atualização o plugin revalida a licença online no servidor da JY Labtech, então o aparelho precisa estar com internet nesse momento. Caches gravados com o valor oficial continuam valendo offline. Por isso o aparelho precisa de acesso à internet pelo menos uma vez a cada 7 dias.
+> ℹ️ **Atualizando da 2.1.x:** um cache gravado com o `licenceInternalKey` antigo (Cloud Run) ou com qualquer endereço fora do servidor oficial não é aproveitado: na primeira operação após a atualização o plugin revalida a licença online no servidor da JY Labtech, então o aparelho precisa estar com internet nesse momento. Caches gravados com o valor oficial continuam valendo offline. Por isso o aparelho precisa de acesso à internet pelo menos uma vez a cada 72 horas.
 
 ### Erros de licença
 
@@ -118,7 +118,7 @@ Outros códigos de erro do plugin:
 
 - **"Licença não encontrada" (404):** a chave está errada ou com espaços; copie novamente do portal.
 - **Limite de aparelhos (412):** cada aparelho conta como um dispositivo. Reinstalar o app ou trocar de aparelho pode ocupar uma nova vaga — desative aparelhos antigos no portal.
-- **Funcionava e parou após alguns dias sem internet:** o cache offline expira após 7 dias; conecte o aparelho e chame `initPayment` novamente.
+- **Funcionava e parou após alguns dias sem internet:** o cache offline expira após 72 horas; conecte o aparelho e chame `initPayment` novamente.
 - **Erro de conexão/timeout:** verifique se o aparelho acessa `https://portal-api.jylabtech.com.br` (o plugin não funciona com proxy).
 - **Ainda usando o `licenceInternalKey` antigo:** não é mais necessário trocar (o valor é ignorado e a validação vai para o servidor oficial), mas você pode simplesmente remover o parâmetro.
 
