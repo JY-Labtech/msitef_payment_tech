@@ -39,7 +39,7 @@ Adicione a dependência no `pubspec.yaml` do seu app:
 
 ```yaml
 dependencies:
-  msitef_payment_tech: ^2.2.0
+  msitef_payment_tech: ^2.3.0
 ```
 
 ## 🔐 Licenciamento
