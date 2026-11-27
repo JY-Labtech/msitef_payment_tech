@@ -1,224 +1,565 @@
-<div align="center" id="top"> 
-  <img src="https://esqueciminhasenha.softwareexpress.com.br/migrador/login/img/SiTeffromFiserv_Logo_RGB.png" height=100 alt="msitef_payment_tech" />
+# msitef_payment_tech
 
-&#xa0;
+> Open source Flutter plugin (MIT) for Android that integrates your app with the m-SiTef TEF app (Software Express) via intent: credit, debit, PIX, voucher, refund and reprint.
 
-</div>
+[![pub package](https://img.shields.io/pub/v/msitef_payment_tech.svg)](https://pub.dev/packages/msitef_payment_tech)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-<h1 align="center">MSitef Payment Tech</h1>
+Plugin Flutter para integrar sua aplicação Android com o **m-SiTef**, o app de TEF da Software Express (Fiserv). O plugin abre o m-SiTef por intent (`br.com.softwareexpress.sitef.msitef.ACTIVITY_CLISITEF`), repassa os parâmetros da transação e devolve o resultado (códigos, NSU, autorização e comprovantes) como um objeto Dart.
 
-<p align="center">
-  <a href="#dart-about">Sobre</a> &#xa0; | &#xa0; 
-  <a href="#sparkles-features">Funcionalidades</a> &#xa0; | &#xa0;
-  <a href="#rocket-technologies">Tecnologias</a> &#xa0; | &#xa0;
-  <a href="#white_check_mark-requirements">Requisitos</a> &#xa0; | &#xa0;
-  <a href="#checkered_flag-starting">Start</a> &#xa0; | &#xa0;
-  <a href="https://github.com/JY-Labtech" target="_blank">Autor</a>
-</p>
+Projeto **open source** sob licença MIT, mantido pela [JY Labtech](https://jylabtech.com.br). Não há licença paga, cadastro nem chamadas a servidores da JY Labtech.
 
-<br>
+> **Aviso:** este plugin **não é oficial** da Software Express/Fiserv. Ele só automatiza a chamada ao m-SiTef instalado no aparelho.
 
-[![Github Badge](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white&link=https://github.com/jhonathanqz)](https://github.com/jhonathanqz)
+## Sumário
 
----
+- [Funcionalidades](#funcionalidades)
+- [Compatibilidade e requisitos](#compatibilidade-e-requisitos)
+- [Instalação](#instalação)
+- [Configuração Android](#configuração-android)
+- [Uso rápido](#uso-rápido)
+- [Referência da API](#referência-da-api)
+- [Exemplos por operação](#exemplos-por-operação)
+- [Tratamento de erros](#tratamento-de-erros)
+- [App de exemplo](#app-de-exemplo)
+- [Testes](#testes)
+- [Migração da 2.x para a 3.0.0](#migração-da-2x-para-a-300)
+- [Contribuindo](#contribuindo)
+- [Licença](#licença)
+- [Créditos](#créditos)
 
-## 🚨 Aviso
+## Funcionalidades
 
-> **Este plugin é _não oficial_** e foi desenvolvido de forma independente para facilitar a integração de pagamentos via SDK do MSitef em dispositivos Android.
+| Operação | Como chamar | Modalidade enviada ao m-SiTef |
+|----------|-------------|-------------------------------|
+| Crédito (à vista ou parcelado, escolhido na tela do m-SiTef) | `mSitefTransaction` com `MSitefType.credit` | `3` |
+| Débito | `mSitefTransaction` com `MSitefType.debit` | `2` |
+| Voucher | `mSitefTransaction` com `MSitefType.voucher` | `2` |
+| PIX | `mSitefTransaction` com `MSitefType.pix` | `122` (com `transacoesHabilitadas=7;`) |
+| Cancelamento / estorno | `mSitefTransaction` com `MSitefType.refound` | `200` |
+| Reimpressão de comprovante | `mSitefTransaction` com `MSitefType.reprinter` | `114` |
+| Menu administrativo | `mSitefMenu(...)` ou `mSitefTransaction` com `MSitefType.administration` | `110` |
+| Menu geral (o operador escolhe a operação) | `mSitefTransaction` com `MSitefType.general` | `0` |
+| Chamada livre (qualquer extra do m-SiTef) | `customAction(params: {'mapMsiTef': {...}})` | a que você informar |
+| Comunicação externa (GSurf/TLS: `comExterna`, `otp`, `isDoubleValidation`, `tokenRegistroTls`) | campos de `TransactionParams` / `mSitefMenu` | - |
 
-### ⚠️⚠️⚠️ Esse plugin não funciona com PROXY!!! ⚠️⚠️⚠️
+Também inclui `TefHelper`, com tabelas de mensagens dos códigos de retorno do SiTef, da configuração e da GSurf, e funções de formatação.
 
-## :dart: Sobre
+## Compatibilidade e requisitos
 
-Plugin Flutter para facilitar integração com o TEF do `MSitef`.
-Necessário ter instalado o `MSitef` para que funcione corretamente. Para obter o `.apk` é necessário entrar em contato com a sua distribuidora do TEF.
+- **Plataforma:** somente **Android** (não há implementação iOS).
+- **App do fabricante:** o **m-SiTef** precisa estar instalado e configurado no aparelho. O `.apk` é fornecido pela sua distribuidora/credenciadora do TEF (Software Express). Sem ele o intent não abre e a operação retorna `null`.
+- **Aparelhos:** qualquer Android com o m-SiTef instalado (POS Android, smartphone ou tablet com pinpad). O plugin envia `tipoPinpad=ANDROID_USB`.
+- **minSdk:** 23 (Android 6.0).
+- **Dart:** `>=3.0.0 <4.0.0`. **Flutter:** `>=3.0.0`.
+- **Proxy:** o m-SiTef não funciona atrás de proxy.
+- **Permissões declaradas pelo plugin** (mescladas no Manifest do seu app):
+  - `android.permission.USB_PERMISSION`, `android.permission.NFC`
+  - `android.permission.BLUETOOTH_SCAN`, `android.permission.BLUETOOTH_CONNECT`, `android.permission.BLUETOOTH` e `android.permission.BLUETOOTH_ADMIN` (as duas últimas até a API 30)
+  - `android.permission.WRITE_EXTERNAL_STORAGE`, `android.permission.MANAGE_EXTERNAL_STORAGE`, `android.permission.READ_PHONE_STATE`
+  - `uses-feature`: `android.hardware.usb.host` (**obrigatório**), `android.hardware.nfc` e `android.hardware.bluetooth_le` (opcional)
 
-## :package: Instalação
+## Instalação
 
-Adicione a dependência no `pubspec.yaml` do seu app:
+```bash
+flutter pub add msitef_payment_tech
+```
+
+Ou, no `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  msitef_payment_tech: ^2.3.0
+  msitef_payment_tech: ^3.0.0
 ```
 
-## 🔐 Licenciamento
+## Configuração Android
 
-O plugin só executa operações de TEF com uma licença da JY Labtech **válida e ativa**. A validação é feita sempre no servidor oficial da JY Labtech (`https://licence-server.invalid/pos-payments/licence/check`) e é repetida antes de **toda** operação (transação, menu e `customAction`), usando o cache offline enquanto ele for válido. Licença inválida, vencida, suspensa ou cancelada bloqueia a operação com o erro `LICENCE_ERROR` e o m-SiTef não é chamado.
+Não é preciso configurar repositório Maven, credenciais nem flavors: o código nativo do plugin já vem pré-compilado em `android/libs` e as dependências (Gson e ZXing) vêm do Maven Central.
 
-### Onde adquirir
+1. Garanta `minSdk` 23 ou maior em `android/app/build.gradle`:
 
-Adquira e gerencie suas licenças no portal **[portal.jylabtech.com.br](https://portal.jylabtech.com.br)** (o login é o mesmo e-mail/senha do portal antigo).
-
-- O produto é único — **"Licença plugin de pagamento"** — e vale para **qualquer** plugin de pagamento da JY Labtech.
-- Plano **mensal**: cobrado por dispositivo (cada aparelho que valida a licença ocupa uma vaga).
-- Plano **debug**: cortesia concedida automaticamente no autocadastro, válido por 365 dias para até 2 aparelhos. Ideal para desenvolvimento e homologação.
-- Aparelhos podem ser desativados pelo portal para liberar vagas.
-- **As chaves de licença já existentes continuam valendo** (mesmos valores). Chaves novas no formato `JYL-...` também funcionam.
-
-### Chaves
-
-- `licenceKey`: a chave da sua licença, copiada do portal.
-- `licenceInternalKey` (**opcional** desde a 2.2.0): endereço da API de validação. Se omitido, o plugin usa a constante `licenceCheck` (URL `https://licence-server.invalid/pos-payments/licence/check` em base64):
-
-```
-***REMOVIDO***
-```
-
-> O módulo nativo aceita o valor em base64 ou a URL em texto puro, mas **só aceita endereços `https` do servidor oficial** (`licence-server.invalid`, caminho `/pos-payments/licence/check`). Qualquer outro valor (inclusive o antigo `***REMOVIDO***...`, outro host, `http` sem TLS ou base64 inválido) é ignorado e a validação é feita no servidor oficial. Não é possível apontar a validação para outro servidor.
-
-> ✅ **Importante:** as chaves **devem ser fornecidas em tempo de execução** ao chamar `MSitefPaymentTech.I.initPayment`. Não armazene as chaves em `local.properties` ou em arquivos de código-fonte versionados. Prefira buscar os valores de um backend seguro, variáveis de ambiente criptografadas ou serviços de configuração remota.
-
-### Inicialização do plugin
-
-Antes de utilizar qualquer operação de TEF, inicialize o plugin informando as chaves:
-
-```dart
-import 'package:msitef_payment_tech/msitef_payment_tech.dart';
-
-Future<void> bootstrapMSitef() async {
-  // licenceInternalKey é opcional (padrão: servidor oficial da JY Labtech)
-  await MSitefPaymentTech.I.initPayment(licenceKey: 'SUA_LICENCE_KEY');
-}
-```
-
-Execute a inicialização uma única vez (por exemplo, no `main()` ou no `initState` do seu `Widget` raiz). Use `MSitefPaymentTech.I.isLicenceValid` para saber se a licença foi validada.
-
-### Cache offline
-
-Após uma validação bem-sucedida, o módulo nativo guarda a licença criptografada (`EncryptedSharedPreferences`) A primeira operação depois de abrir o app sempre consulta o servidor, e a licença é revalidada online a cada **4 horas** de uso. Se o servidor recusar a licença (cliente bloqueado no portal, licença vencida, cancelada ou suspensa, não encontrada, aparelho desativado ou limite de aparelhos), o cache é apagado e as operações falham com `LICENCE_ERROR` na hora. Quando o servidor não responde (sem internet, timeout, 5xx), o cache é usado (e o plugin espera 5 minutos antes de tentar de novo) enquanto:
-
-- a licença continuar válida (`expiredAt` no futuro e não vencida, inativa ou cancelada);
-- a última consulta online bem-sucedida tiver no máximo **72 horas** (e não estiver no futuro, o que indicaria relógio adulterado); e
-- a `licenceKey` for a mesma da licença salva.
-
-Depois disso (ou se a `licenceKey` mudar), o cache é apagado e uma nova consulta online é obrigatória; se ela falhar, as operações ficam bloqueadas.
-
-> ℹ️ **Atualizando da 2.1.x:** um cache gravado com o `licenceInternalKey` antigo (Cloud Run) ou com qualquer endereço fora do servidor oficial não é aproveitado: na primeira operação após a atualização o plugin revalida a licença online no servidor da JY Labtech, então o aparelho precisa estar com internet nesse momento. Caches gravados com o valor oficial continuam valendo offline. Por isso o aparelho precisa de acesso à internet pelo menos uma vez a cada 72 horas.
-
-### Erros de licença
-
-Quando a validação falha, `initPayment` lança uma `PlatformException` com `code: 'LICENCE_ERROR'` e `message` contendo a mensagem retornada pela API (ou `Erro ao validar licença (HTTP <código>)`, se o servidor não enviar mensagem). A licença também é conferida pelo nativo antes de cada operação: se ela deixou de ser válida (cache expirado, licença vencida/suspensa/cancelada, sem internet para revalidar), o nativo devolve `LICENCE_ERROR`, o m-SiTef não é aberto e os métodos de pagamento retornam `null` (a próxima operação tenta o `initPayment` de novo). Uma resposta 200 com licença vencida, inativa ou cancelada também é tratada como erro.
-
-| HTTP | Situação | O que fazer |
-|------|----------|-------------|
-| 404 | Licença não encontrada | Confira a `licenceKey` copiada do portal. |
-| 412 | Limite de aparelhos atingido ou aparelho desativado | Desative um aparelho no portal ou aumente a quantidade de dispositivos do plano; reative o aparelho se ele foi desativado. |
-| 428 | Licença vencida, suspensa ou cancelada | Regularize o pagamento/renovação no portal. |
-| 403 | Requisição sem token de licença | Informe uma `licenceKey` não vazia. |
-| 400 | Não foi possível identificar o aparelho | O aparelho não forneceu um identificador estável (ANDROID_ID). Verifique o dispositivo/ROM. |
-| 429 | Muitas requisições (rate limit) | Aguarde alguns instantes e tente novamente; evite chamar `initPayment` em loop. |
-
-Outros códigos de erro do plugin:
-
-- `INVALID_ARGUMENT`: `licenceKey` vazio.
-- `LICENCE_NOT_INITIALIZED`: uma operação foi chamada antes de `initPayment`.
-
-### Troubleshooting
-
-- **"Licença não encontrada" (404):** a chave está errada ou com espaços; copie novamente do portal.
-- **Limite de aparelhos (412):** cada aparelho conta como um dispositivo. Reinstalar o app ou trocar de aparelho pode ocupar uma nova vaga — desative aparelhos antigos no portal.
-- **Funcionava e parou após alguns dias sem internet:** o cache offline expira após 72 horas; conecte o aparelho e chame `initPayment` novamente.
-- **Erro de conexão/timeout:** verifique se o aparelho acessa `https://licence-server.invalid` (o plugin não funciona com proxy).
-- **Ainda usando o `licenceInternalKey` antigo:** não é mais necessário trocar (o valor é ignorado e a validação vai para o servidor oficial), mas você pode simplesmente remover o parâmetro.
-
-## :sparkles: Funcionalidades
-
-:heavy_check_mark: Cartão de crédito
-:heavy_check_mark: Cartão de débito
-:heavy_check_mark: PIX
-:heavy_check_mark: Cancelamento
-:heavy_check_mark: Reimpressão
-
-## :rocket: Tecnologias
-
-#### Para que o plugin funcione corretamente é necessário ter o aplicativo `MSitef` instalado na máquina. Este é fornecido pela própria empresa que está lhe fornecendo o TEF.
-
-- [Flutter](https://docs.flutter.dev/)
-
-## :white_check_mark: Requisitos
-
-Para que o plugin funcione corretamente é necessário ter o aplicativo `MSitef` instalado na máquina.
-
-## :checkered_flag: Starting
-
-1. **Inicialize o plugin** com as chaves de licença:
-
-```dart
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await MSitefPaymentTech.I.initPayment(licenceKey: 'SUA_LICENCE_KEY');
-  runApp(const MyApp());
-}
-```
-
-2. **Dispare a transação desejada** usando o objeto `payment`:
-
-   ```dart
-   import 'package:msitef_payment_tech/msitef_payment_tech.dart';
-   import 'package:msitef_payment_tech/payments/model/params/msitef_type.dart';
-   import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
-
-   final response = await MSitefPaymentTech.I.payment.mSitefTransaction(
-     transactionParams: TransactionParams(
-       modalidade: MSitefType.debit,
-       value: '10',
-       couponNumber: DateTime.now().toIso8601String(),
-       dateFiscal: '2021-09-01',
-       hourFiscal: '12:00:00',
-       operador: 'teste',
-       ipSitef: '192.168.0.165',
-       storeId: '00000000',
-       terminalId: '00000001',
-       companyDocument: '00000000000000',
-       automationDocument: '00000000000000',
-     ),
-   );
+   ```groovy
+   android {
+       defaultConfig {
+           minSdk = 23
+       }
+   }
    ```
 
-   - Para crédito, altere `modalidade` para `MSitefType.credit`.
-   - Para PIX, utilize `MSitefType.pix`.
-   - Para voucher, utilize `MSitefType.voucher`.
-   - Para cancelamentos, utilize `MSitefType.refound` e informe os campos obrigatórios do comprovante.
-   - Para abrir o menu geral/administrativo do m-SiTef, use `MSitefPaymentTech.I.payment.mSitefMenu(...)`; para enviar parâmetros livres, use `customAction(params: {...})`.
-   - Os métodos retornam `null` se a transação falhar ou se não houver licença válida.
+2. Se o seu app usa Jetifier (`android.enableJetifier=true`) e o build falhar ao transformar os jars do engine do Flutter (visto no Flutter 3.47), adicione ao `android/gradle.properties`, como no app de exemplo:
 
-3. **Consuma o retorno** através do objeto `TefTransactionResponseMSitef`, contendo códigos, comprovantes e metadados da transação.
+   ```properties
+   android.jetifier.ignorelist=armeabi_v7a_,arm64_v8a_,x86_64_,flutter_embedding_
+   ```
 
-</br>
+3. O plugin declara `android.hardware.usb.host` como obrigatório. Se o seu app também roda em aparelhos sem USB host, sobrescreva no `AndroidManifest.xml` do app:
 
-## 🧪 Testes
+   ```xml
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+       xmlns:tools="http://schemas.android.com/tools">
+       <uses-feature android:name="android.hardware.usb.host"
+           android:required="false"
+           tools:replace="android:required" />
+   </manifest>
+   ```
 
-Testes Dart (contrato do MethodChannel e propagação de `LICENCE_ERROR`):
+Não há `intent-filter` a declarar: o plugin abre o m-SiTef com `startActivityForResult` e recebe a resposta na `Activity` do Flutter.
+
+## Uso rápido
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:msitef_payment_tech/msitef_payment_tech.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MSitefPaymentTech.I.initPayment();
+  runApp(const MaterialApp(home: VendaPage()));
+}
+
+class VendaPage extends StatelessWidget {
+  const VendaPage({super.key});
+
+  Future<void> _pagar(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final now = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+
+    final response = await MSitefPaymentTech.I.payment.mSitefTransaction(
+      transactionParams: TransactionParams(
+        modalidade: MSitefType.credit,
+        value: '1000', // R$ 10,00 em centavos
+        couponNumber: '1',
+        dateFiscal: '${now.year}${two(now.month)}${two(now.day)}', // AAAAMMDD
+        hourFiscal: '${two(now.hour)}${two(now.minute)}${two(now.second)}', // HHMMSS
+        operador: 'Caixa 1',
+        ipSitef: '192.168.0.10',
+        storeId: '00000000',
+        terminalId: 'TE000001',
+        companyDocument: '00000000000000',
+        automationDocument: '00000000000000',
+      ),
+    );
+
+    final String mensagem;
+    if (response == null) {
+      mensagem = 'Sem retorno do m-SiTef (cancelado ou não instalado).';
+    } else if (response.resultCode == 0) {
+      mensagem = 'Aprovado. NSU ${response.tefNSUSitef}';
+    } else {
+      mensagem = 'Negado: ${response.errorTransaction}';
+    }
+
+    messenger.showSnackBar(SnackBar(content: Text(mensagem)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => _pagar(context),
+          child: const Text('Pagar R\$ 10,00 no crédito'),
+        ),
+      ),
+    );
+  }
+}
+```
+
+Um único import (`package:msitef_payment_tech/msitef_payment_tech.dart`) exporta `MSitefPaymentTech`, `Payment`, `TransactionParams`, `MSitefType`, `TefTransactionResponseMSitef`, `TefHelper` e os demais modelos.
+
+## Referência da API
+
+### `MSitefPaymentTech`
+
+Singleton de entrada do plugin.
+
+| Membro | Retorno | Descrição |
+|--------|---------|-----------|
+| `MSitefPaymentTech.I` | `MSitefPaymentTech` | Instância única. |
+| `initPayment()` | `Future<Payment>` | Cria (ou devolve) o `Payment`. Não chama o nativo nem a rede; pode ser chamado mais de uma vez. |
+| `payment` | `Payment` | O `Payment` criado por `initPayment()`. Lança `Exception` se `initPayment()` ainda não foi chamado. |
+
+```dart
+final payment = await MSitefPaymentTech.I.initPayment();
+// depois, em qualquer lugar:
+final mesmoPayment = MSitefPaymentTech.I.payment;
+```
+
+### `Payment`
+
+| Método | Retorno | Descrição |
+|--------|---------|-----------|
+| `static Future<Payment> create({MethodChannel channel = msitefChannel})` | `Future<Payment>` | Cria (ou devolve) a instância única. `channel` só é usado na primeira chamada. Normalmente use `MSitefPaymentTech.I.initPayment()`. |
+| `mSitefTransaction({required TransactionParams transactionParams})` | `Future<TefTransactionResponseMSitef?>` | Abre o m-SiTef com a modalidade de `transactionParams.modalidade`. |
+| `mSitefMenu({...})` | `Future<TefTransactionResponseMSitef?>` | Abre o menu administrativo (modalidade `110`). |
+| `customAction({required Map<String, dynamic> params})` | `Future<TefTransactionResponseMSitef?>` | Envia extras livres ao m-SiTef. |
+
+Todos os métodos de operação retornam `null` quando a operação falha antes de haver uma resposta do m-SiTef (veja [Tratamento de erros](#tratamento-de-erros)).
+
+#### `mSitefMenu`
+
+```dart
+Future<TefTransactionResponseMSitef?> mSitefMenu({
+  required String ipSitef,
+  required String storeId,
+  required String terminalId,
+  required String companyDocument,
+  required String comExternal,        // '' quando não usa comunicação externa
+  required String isDoubleValidation, // usado com comExternal == '1'
+  required String otp,                // usado com comExternal '1', '2' ou '3'
+  required String enabledTransactions, // vira 'transacoesHabilitadas' (ignorado se '')
+  required String automationDocument,
+  String? tokenRegistroTls,           // enviado se não for vazio
+});
+```
+
+```dart
+final response = await MSitefPaymentTech.I.payment.mSitefMenu(
+  ipSitef: '192.168.0.10',
+  storeId: '00000000',
+  terminalId: 'TE000001',
+  companyDocument: '00000000000000',
+  comExternal: '',
+  isDoubleValidation: '',
+  otp: '',
+  enabledTransactions: '',
+  automationDocument: '00000000000000',
+);
+```
+
+#### `customAction`
+
+`params` precisa ter a chave `mapMsiTef` com um `Map<String, String>`. Cada par vira um extra do intent do m-SiTef, sem nenhum valor padrão (informe tudo o que a operação exige).
+
+```dart
+final response = await MSitefPaymentTech.I.payment.customAction(params: {
+  'mapMsiTef': {
+    'modalidade': '114',
+    'empresaSitef': '00000000',
+    'enderecoSitef': '192.168.0.10',
+    'terminalSitef': 'TE000001',
+    'CNPJ_CPF': '00000000000000',
+    'cnpj_automacao': '00000000000000',
+  },
+});
+```
+
+### `TransactionParams`
+
+| Campo | Tipo | Obrigatório | Extra do m-SiTef | Descrição |
+|-------|------|-------------|------------------|-----------|
+| `modalidade` | `MSitefType` | sim | `modalidade` | Tipo da operação. |
+| `value` | `String` | sim | `valor` | Valor em centavos, sem separador (`'1000'` = R$ 10,00). |
+| `couponNumber` | `String` | sim | `numeroCupom` | Número do cupom/documento fiscal. |
+| `dateFiscal` | `String` | sim | `data` | Data fiscal, `AAAAMMDD`. |
+| `hourFiscal` | `String` | sim | `hora` | Hora fiscal, `HHMMSS`. |
+| `operador` | `String` | sim | `operador` | Operador do caixa. |
+| `ipSitef` | `String` | sim | `enderecoSitef` | IP/host do servidor SiTef. |
+| `storeId` | `String` | sim | `empresaSitef` | Código da loja (8 dígitos). |
+| `terminalId` | `String` | sim | `terminalSitef` | Código do terminal. |
+| `companyDocument` | `String` | sim | `CNPJ_CPF` | CNPJ/CPF do estabelecimento. |
+| `automationDocument` | `String` | sim | `cnpj_automacao` | CNPJ da software house (automação). |
+| `enabledTransactions` | `String?` | não | `restricoes` | Restrições de transação (ignorado se vazio). |
+| `comExternal` | `String?` | não | `comExterna` | Comunicação externa (`'1'`, `'2'`, `'3'`...). |
+| `isDoubleValidation` | `String?` | não | `isDoubleValidation` | Enviado só quando `comExternal == '1'`. |
+| `otp` | `String?` | não | `otp` | Enviado quando `comExternal` é `'1'`, `'2'` ou `'3'`. |
+| `tokenRegistroTls` | `String?` | não | - | Repassado ao nativo, mas só é usado pelo `mSitefMenu`. |
+| `params`, `paramsAdd` | `String?` | não | - | Mantidos por compatibilidade; hoje não são enviados ao m-SiTef. |
+
+O plugin também envia fixos: `tipoPinpad=ANDROID_USB`, `timeoutColeta=30`, `acessibilidadeVisual=0` e `habilitaTrace=1`.
+
+`TransactionParams` tem `copyWith`, `toMap`/`fromMap`, `toJson`/`fromJson`, `==` e `hashCode`. `MSitefParams` é um modelo equivalente com todos os campos opcionais.
+
+### `MSitefType` (enum)
+
+| Valor | `modality` |
+|-------|------------|
+| `credit` | `'3'` |
+| `debit` | `'2'` |
+| `voucher` | `'2'` |
+| `pix` | `'122'` |
+| `refound` | `'200'` (cancelamento) |
+| `reprinter` | `'114'` (reimpressão) |
+| `administration` | `'110'` (menu administrativo) |
+| `general` | `'0'` (menu geral) |
+
+`MSitefType.fromString('3')` devolve o enum da modalidade (valores desconhecidos viram `general`).
+
+Também existe o enum `SitefModalityMSitef` (`creditCard`, `debitCard`, `pix`, `digitalWallet`, `cancellation`, `undefined`), útil para classificar a venda no seu app.
+
+### `TefTransactionResponseMSitef`
+
+Resposta das operações. Campos preenchidos a partir do retorno do m-SiTef:
+
+| Campo | Extra do m-SiTef | Descrição |
+|-------|------------------|-----------|
+| `resultCode` (`int`) | `CODRESP` | `0` = aprovada. Se vier `0` sem `NSU_HOST`, o plugin troca para `99999` (não confirmada). |
+| `errorTransaction` (`String?`) | - | Mensagem do código (`TefHelper.checkErrorTransactionTEF`); `null` quando aprovada. |
+| `tefNSUSitef` | `NSU_SITEF` | NSU do SiTef. |
+| `tefNSUAuthorizing` | `NSU_HOST` | NSU do autorizador. |
+| `tefCodAuthorization` | `COD_AUTORIZACAO` | Código de autorização. |
+| `transactionConfirmation` | `COMP_DADOS_CONF` | Dados de confirmação. |
+| `tefCodPayment` | `CODTRANS` | Código/nome da transação. |
+| `establishmentReceipt` | `VIA_ESTABELECIMENTO` | Via do estabelecimento. |
+| `customerReceipt` | `VIA_CLIENTE` | Via do cliente. |
+| `typeFields` (`String?`) | `TIPO_CAMPOS` | JSON com os campos adicionais devolvidos pelo m-SiTef. |
+
+Os demais campos (`binCard`, `tefInstitution`, `cardNumber`, `amountCancelled` etc.) existem no modelo e ficam vazios (`''`) quando o m-SiTef não os devolve; use `typeFields` para ler dados extras. O modelo tem `copyWith`, `toMap`/`fromMap` e `toJson`/`fromJson`.
+
+### `TefHelper`
+
+| Método | Descrição |
+|--------|-----------|
+| `checkErrorTransactionTEF(int)` | `{código: mensagem}` dos códigos de retorno de transação do SiTef. |
+| `checkErrorConfigTEF(int)` | `{código: mensagem}` dos códigos de configuração da CliSiTef. |
+| `checkErrorGSurfTEF(int)` | `{código: mensagem}` dos códigos da GSurf. |
+| `tefAlert(String)` | `true` para códigos que pedem atenção do operador (`-1`, `-5`, `96`...). |
+| `onlyNumberFrom8Positions(text:)` | Só dígitos, com 8 posições (zeros à esquerda). Útil para `storeId`. |
+| `priceSanitized(double)` | `10.5` vira `'10,50'`. |
+| `operatorSanitize(String)` | Corta o nome do operador em 20 caracteres. |
+| `onlyNumberString(text:)` | Remove tudo que não é dígito (CNPJ/CPF). |
+| `roundABNT(num, decimalPlaces)` | Arredondamento ABNT. |
+
+### Constantes
+
+- `CHANNEL_NAME` (`'msitef_payment_tech'`) e `msitefChannel` (`MethodChannel`): canal entre o Dart e o nativo. Útil para mocks em testes.
+
+## Exemplos por operação
+
+Nos exemplos abaixo, `base` é um `TransactionParams` com os dados do seu estabelecimento:
+
+```dart
+final now = DateTime.now();
+String two(int v) => v.toString().padLeft(2, '0');
+
+final base = TransactionParams(
+  modalidade: MSitefType.general,
+  value: '0',
+  couponNumber: '123',
+  dateFiscal: '${now.year}${two(now.month)}${two(now.day)}',
+  hourFiscal: '${two(now.hour)}${two(now.minute)}${two(now.second)}',
+  operador: TefHelper.operatorSanitize('Caixa 1'),
+  ipSitef: '192.168.0.10',
+  storeId: TefHelper.onlyNumberFrom8Positions(text: '1'),
+  terminalId: 'TE000001',
+  companyDocument: '00000000000000',
+  automationDocument: '00000000000000',
+);
+final payment = MSitefPaymentTech.I.payment;
+```
+
+### Crédito à vista e parcelado
+
+O número de parcelas e o tipo de parcelamento são escolhidos na tela do m-SiTef.
+
+```dart
+final credito = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.credit, value: '15000'),
+);
+```
+
+### Débito
+
+```dart
+final debito = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.debit, value: '2590'),
+);
+```
+
+### PIX
+
+O plugin envia `transacoesHabilitadas=7;` automaticamente.
+
+```dart
+final pix = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.pix, value: '5000'),
+);
+```
+
+### Voucher
+
+```dart
+final voucher = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.voucher, value: '3200'),
+);
+```
+
+### Cancelamento / estorno
+
+O m-SiTef pede na tela os dados da transação original (data, NSU, valor).
+
+```dart
+final cancelamento = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.refound, value: '15000'),
+);
+if (cancelamento?.resultCode == 0) {
+  // cancelamento aprovado
+}
+```
+
+### Reimpressão de comprovante
+
+```dart
+final reimpressao = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.reprinter),
+);
+```
+
+### Menu administrativo
+
+```dart
+final adm = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(modalidade: MSitefType.administration),
+);
+// ou payment.mSitefMenu(...), veja a referência da API
+```
+
+### Comunicação externa (GSurf)
+
+```dart
+final gsurf = await payment.mSitefTransaction(
+  transactionParams: base.copyWith(
+    modalidade: MSitefType.credit,
+    value: '1000',
+    comExternal: '1',
+    isDoubleValidation: '0',
+    otp: 'SEU_OTP',
+  ),
+);
+```
+
+### Imprimindo os comprovantes
+
+O plugin não imprime: use `response.customerReceipt` e `response.establishmentReceipt` com a impressora do seu aparelho.
+
+## Tratamento de erros
+
+Os métodos `mSitefTransaction`, `mSitefMenu` e `customAction` **não lançam exceção**: qualquer falha antes de uma resposta do m-SiTef vira `null`. Quando há resposta, confira `resultCode` e `errorTransaction`.
+
+Códigos de `PlatformException` do nativo (convertidos em `null` pelo Dart):
+
+| Código | Significado |
+|--------|-------------|
+| `NO_ACTIVITY` | O plugin não está ligado a uma `Activity` (por exemplo, chamado antes do app abrir a tela). |
+| `TRANSACTION_CANCELLED` | O m-SiTef fechou sem devolver dados (voltar/cancelar sem retorno). |
+| `ERROR` | Falha ao abrir o m-SiTef: app não instalado (`ActivityNotFoundException`), parâmetro obrigatório ausente ou `customAction` sem `mapMsiTef`. |
+| `notImplemented` | Método desconhecido no canal. |
+
+Códigos de `resultCode` mais comuns (lista completa em `TefHelper.checkErrorTransactionTEF`):
+
+| `resultCode` | Significado |
+|--------------|-------------|
+| `0` | Aprovada. |
+| `99999` | Retorno `0` sem NSU do autorizador (trate como não aprovada). |
+| `-2` | Operação cancelada pelo operador. |
+| `-5` | Sem comunicação com o SiTef. |
+| `-6` | Operação cancelada pelo usuário no pinpad. |
+| `-40` | Transação negada pelo servidor SiTef. |
+| `51` | Saldo insuficiente. |
+| `55` | Senha incorreta. |
+
+```dart
+final r = await payment.mSitefTransaction(transactionParams: params);
+if (r == null) {
+  // m-SiTef não abriu ou não devolveu dados
+} else if (r.resultCode == 0) {
+  // aprovada: guarde r.tefNSUSitef, r.tefCodAuthorization e os comprovantes
+} else {
+  final alerta = TefHelper.tefAlert(r.resultCode.toString());
+  print('Negada (${r.resultCode}): ${r.errorTransaction} alerta=$alerta');
+}
+```
+
+## App de exemplo
+
+O app em `example/` tem uma tela com valor e botões de débito, crédito, PIX e voucher.
+
+```bash
+cd example
+flutter pub get
+flutter run            # num aparelho Android com o m-SiTef instalado
+flutter build apk --debug
+```
+
+Edite `example/lib/payment/payment_page.dart` para colocar o IP do SiTef, a loja, o terminal e os CNPJs do seu ambiente.
+
+## Testes
+
+Testes Dart (contrato do MethodChannel, modelos e helpers):
 
 ```bash
 flutter test
 ```
 
-Testes JVM do módulo nativo (URL travada no servidor oficial, regras de licença, cache offline e respostas HTTP do servidor):
+Testes JVM do módulo nativo (`android/native`: montagem dos extras do intent e respostas do plugin). Precisam de JDK 17 e do `flutter.jar` em cache (`flutter precache --android`):
 
 ```bash
 export FLUTTER_SDK="$(dirname "$(dirname "$(which flutter)")")"
-android/gradlew -p android/native --no-daemon testDebugUnitTest
+android/gradlew -p android/native --no-daemon -Dorg.gradle.jvmargs=-Xmx2g testDebugUnitTest
 ```
 
-##### Imagem do M-Sitef
+Depois de alterar o Java em `android/native`, gere de novo os binários de `android/libs`:
 
-  <img src="https://dev.softwareexpress.com.br/assets/images/image11-4b9d553a8b1775258c997ad9930a6726.png" height=400 alt="MSitef" />
+```bash
+JAVA_TOOL_OPTIONS=-Xmx2g scripts/build_android_aar.sh
+```
 
-</br>
+## Migração da 2.x para a 3.0.0
 
-</br>
+A 3.0.0 remove toda a licença paga. Não existe mais chave, validação online, cache de licença nem erro de licença.
 
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/JY-Labtech"><img src="https://avatars.githubusercontent.com/u/185066406?s=200&v=4" width="100px;" alt=""/><br /><sub><b>JY Labtech</b></sub></a><br /> <a href="https://github.com/JY-Labtech" title="Autor"></a></td>
-  </tr>
+| Removido | O que fazer |
+|----------|-------------|
+| `licenceKey` e `licenceInternalKey` de `MSitefPaymentTech.I.initPayment` e `Payment.create` | Chame sem parâmetros. |
+| `MSitefPaymentTech.I.isLicenceValid` e `Payment.hasValidLicence` | Remova; o plugin está pronto logo após `initPayment()`. |
+| Constante `licenceCheck` e `package:msitef_payment_tech/licence/constants/licence_constants.dart` | Remova o import. O `MethodChannel` agora é `msitefChannel`, exportado pelo import principal. |
+| Códigos `LICENCE_ERROR`, `LICENCE_NOT_INITIALIZED` e `INVALID_ARGUMENT` | Não existem mais. |
+| Método nativo `initPayment` | Não existe mais; `initPayment()` só cria o objeto Dart. |
 
-</table>
+Antes (2.x):
 
-Feito por <a href="https://github.com/jhonathanqz" target="_blank">Jhonathan Queiroz</a>
+```dart
+import 'package:msitef_payment_tech/msitef_payment_tech.dart';
+import 'package:msitef_payment_tech/payments/model/params/msitef_type.dart';
+import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
 
-&#xa0;
+await MSitefPaymentTech.I.initPayment(
+  licenceKey: 'SUA_LICENCE_KEY',
+  licenceInternalKey: 'aHR0cHM6Ly9...',
+);
+if (MSitefPaymentTech.I.isLicenceValid) {
+  await MSitefPaymentTech.I.payment.mSitefTransaction(transactionParams: params);
+}
+```
 
-<a href="#top">Back to top</a>
+Depois (3.0.0):
+
+```dart
+import 'package:msitef_payment_tech/msitef_payment_tech.dart';
+
+await MSitefPaymentTech.I.initPayment();
+await MSitefPaymentTech.I.payment.mSitefTransaction(transactionParams: params);
+```
+
+Os imports antigos de `payments/...` continuam funcionando. Também saíram as dependências `androidx.security:security-crypto` e `okhttp`.
+
+## Contribuindo
+
+Issues e pull requests são bem-vindos em [github.com/JY-Labtech/msitef_payment_tech](https://github.com/JY-Labtech/msitef_payment_tech/issues).
+
+1. Abra uma issue descrevendo o bug ou a proposta (aparelho, versão do m-SiTef e do Flutter).
+2. Faça um fork, crie uma branch e inclua testes (`flutter test` e os testes nativos).
+3. Se mudar o Java em `android/native`, regenere `android/libs` com `scripts/build_android_aar.sh`.
+4. Rode `flutter analyze` antes de abrir o PR.
+
+## Licença
+
+[MIT](LICENSE).
+
+## Créditos
+
+Desenvolvido e mantido pela **JY Labtech**: [https://jylabtech.com.br](https://jylabtech.com.br) ([GitHub](https://github.com/JY-Labtech)). Autor original: [Jhonathan Queiroz](https://github.com/jhonathanqz).
+
+m-SiTef e SiTef são marcas da Software Express/Fiserv.

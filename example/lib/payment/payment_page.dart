@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:msitef_payment_tech/msitef_payment_tech.dart';
-import 'package:msitef_payment_tech/payments/model/params/msitef_type.dart';
-import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
-import 'package:msitef_payment_tech/payments/payment.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({Key? key}) : super(key: key);
@@ -13,12 +10,6 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   final TextEditingController _moneyController = TextEditingController(text: '10.00');
-  final TextEditingController _licenceKeyController = TextEditingController(
-    text: 'SUA_LICENCE_KEY',
-  );
-  final TextEditingController _licenceInternalKeyController = TextEditingController(
-    text: '***REMOVIDO***',
-  );
 
   Payment? _payment;
   bool _isInitializing = false;
@@ -34,20 +25,17 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _bootstrapPayment() async {
     setState(() {
       _isInitializing = true;
-      _statusMessage = 'Inicializando licença...';
+      _statusMessage = 'Inicializando o plugin...';
     });
     try {
-      _payment = await MSitefPaymentTech.I.initPayment(
-        licenceKey: _licenceKeyController.text.trim(),
-        licenceInternalKey: _licenceInternalKeyController.text.trim(),
-      );
+      _payment = await MSitefPaymentTech.I.initPayment();
       setState(() {
-        _statusMessage = '✅ Licença validada com sucesso.';
+        _statusMessage = '✅ Plugin pronto.';
       });
     } catch (error) {
       setState(() {
         _payment = null;
-        _statusMessage = '❌ Erro ao validar licença: $error';
+        _statusMessage = '❌ Erro ao inicializar o plugin: $error';
       });
     } finally {
       setState(() {
@@ -56,7 +44,7 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  bool get _isReady => _payment != null && MSitefPaymentTech.I.isLicenceValid && !_isInitializing;
+  bool get _isReady => _payment != null && !_isInitializing;
 
   @override
   Widget build(BuildContext context) {
@@ -67,13 +55,6 @@ class _PaymentPageState extends State<PaymentPage> {
           const SizedBox(
             height: 20,
           ),
-          _LicenceSection(
-            licenceKeyController: _licenceKeyController,
-            licenceInternalKeyController: _licenceInternalKeyController,
-            onReinitialize: _isInitializing ? null : _bootstrapPayment,
-            isInitializing: _isInitializing,
-          ),
-          const SizedBox(height: 20),
           _AmountField(controller: _moneyController, enabled: _isReady && !_isProcessing),
           const SizedBox(height: 20),
           const Text(
@@ -134,7 +115,7 @@ class _PaymentPageState extends State<PaymentPage> {
     final payment = _payment;
     if (payment == null) {
       setState(() {
-        _statusMessage = '❌ Inicialize a licença antes de realizar transações.';
+        _statusMessage = '❌ Inicialize o plugin antes de realizar transações.';
       });
       return;
     }
@@ -149,7 +130,7 @@ class _PaymentPageState extends State<PaymentPage> {
         transactionParams: TransactionParams(
           modalidade: modality,
           value: valueInCents.toString(),
-          couponNumber: DateTime.now().toIso8601String(),
+          couponNumber: DateTime.now().millisecondsSinceEpoch.toString(),
           dateFiscal: _formatTodayAsDate(),
           hourFiscal: _formatNowAsTime(),
           operador: 'Operador Demo',
@@ -185,7 +166,7 @@ class _PaymentPageState extends State<PaymentPage> {
     final year = now.year.toString().padLeft(4, '0');
     final month = now.month.toString().padLeft(2, '0');
     final day = now.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
+    return '$year$month$day'; // AAAAMMDD
   }
 
   String _formatNowAsTime() {
@@ -193,14 +174,12 @@ class _PaymentPageState extends State<PaymentPage> {
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
     final second = now.second.toString().padLeft(2, '0');
-    return '$hour:$minute:$second';
+    return '$hour$minute$second'; // HHMMSS
   }
 
   @override
   void dispose() {
     _moneyController.dispose();
-    _licenceKeyController.dispose();
-    _licenceInternalKeyController.dispose();
     super.dispose();
   }
 }
@@ -225,58 +204,6 @@ class _AmountField extends StatelessWidget {
         border: OutlineInputBorder(),
       ),
       enabled: enabled,
-    );
-  }
-}
-
-class _LicenceSection extends StatelessWidget {
-  const _LicenceSection({
-    required this.licenceKeyController,
-    required this.licenceInternalKeyController,
-    required this.onReinitialize,
-    required this.isInitializing,
-  });
-
-  final TextEditingController licenceKeyController;
-  final TextEditingController licenceInternalKeyController;
-  final VoidCallback? onReinitialize;
-  final bool isInitializing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: licenceKeyController,
-          decoration: const InputDecoration(
-            labelText: 'Licence Key',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: licenceInternalKeyController,
-          decoration: const InputDecoration(
-            labelText: 'Licence Internal Key',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: onReinitialize,
-          icon: isInitializing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.vpn_key),
-          label: Text(isInitializing ? 'Validando licença...' : 'Inicializar licença'),
-        ),
-      ],
     );
   }
 }

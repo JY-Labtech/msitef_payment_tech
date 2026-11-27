@@ -5,11 +5,7 @@ import 'payment/payment_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await MSitefPaymentTech.I.initPayment(
-    licenceKey: 'SUA_LICENCE_KEY',
-    licenceInternalKey:
-        '***REMOVIDO***',
-  );
+  await MSitefPaymentTech.I.initPayment();
   runApp(const MyApp());
 }
 

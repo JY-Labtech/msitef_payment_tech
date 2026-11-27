@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:msitef_payment_tech/licence/constants/licence_constants.dart';
+import 'package:msitef_payment_tech/payments/constants/channel_constants.dart';
 import 'package:msitef_payment_tech/payments/helper/tef_helper.dart';
 import 'package:msitef_payment_tech/payments/model/params/transaction_params.dart';
 import 'package:msitef_payment_tech/payments/model/tef_transaction_model.dart';
@@ -15,42 +15,27 @@ final class Payment {
   // Cache da instância criada
   static Payment? _instance;
 
-  String _licenceKey;
-  String _licenceInternalKey;
-  bool _licenceConfigured;
+  Payment._({required this.channel});
 
-  Payment._({
-    required this.channel,
-    required String licenceKey,
-    required String licenceInternalKey,
-  })  : _licenceKey = licenceKey,
-        _licenceInternalKey = licenceInternalKey,
-        _licenceConfigured = false;
-
+  /// Cria (ou devolve) a instância única de [Payment].
+  ///
+  /// [channel] é opcional (padrão: [msitefChannel]) e só é usado na primeira
+  /// chamada.
   static Future<Payment> create({
-    required MethodChannel channel,
-    required String licenceKey,
-    String licenceInternalKey = licenceCheck,
+    MethodChannel channel = msitefChannel,
   }) async {
-    if (_instance == null) {
-      _instance = Payment._(
-        channel: channel,
-        licenceKey: licenceKey,
-        licenceInternalKey: licenceInternalKey,
-      );
-    } else {
-      _instance!._updateLicenceKeys(licenceKey, licenceInternalKey);
-    }
-
-    await _instance!._scheduleLicenceSync();
-    return _instance!;
+    return _instance ??= Payment._(channel: channel);
   }
 
+  /// Abre o m-SiTef com a modalidade de [TransactionParams.modalidade]
+  /// (crédito, débito, PIX, voucher, cancelamento, reimpressão etc.).
+  ///
+  /// Retorna `null` se a operação falhar (m-SiTef não instalado, sem Activity,
+  /// operação cancelada sem retorno ou resposta inválida).
   Future<TefTransactionResponseMSitef?> mSitefTransaction({
     required TransactionParams transactionParams,
   }) async {
     try {
-      await _ensureLicenceSynced();
       final modality =
           int.tryParse(transactionParams.modalidade.modality) ?? 0;
 
@@ -80,12 +65,14 @@ final class Payment {
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (error) {
-      _handleLicenceError(error);
+    } catch (_) {
       return null;
     }
   }
 
+  /// Abre o menu administrativo do m-SiTef (modalidade `110`).
+  ///
+  /// Retorna `null` se a operação falhar.
   Future<TefTransactionResponseMSitef?> mSitefMenu({
     required String ipSitef,
     required String storeId,
@@ -99,7 +86,6 @@ final class Payment {
     String? tokenRegistroTls,
   }) async {
     try {
-      await _ensureLicenceSynced();
       final paramsTransaction = _lineToMethodChannel(
         ipSitef: ipSitef,
         storeId: storeId,
@@ -119,65 +105,28 @@ final class Payment {
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (error) {
-      _handleLicenceError(error);
+    } catch (_) {
       return null;
     }
   }
 
+  /// Envia extras livres ao m-SiTef.
+  ///
+  /// [params] deve conter a chave `mapMsiTef` com um `Map<String, String>`;
+  /// cada par vira um extra do intent (ex.: `{'mapMsiTef': {'modalidade': '114'}}`).
+  /// Retorna `null` se a operação falhar.
   Future<TefTransactionResponseMSitef?> customAction({
     required Map<String, dynamic> params,
   }) async {
     try {
-      await _ensureLicenceSynced();
       final resultTransaction = await channel.invokeMethod('action', params);
       final resultJson = json.decode(resultTransaction);
       final model = TefTransactionModel.fromMap(resultJson);
 
       return _fetchTefTransactionResponse(model: model);
-    } catch (error) {
-      _handleLicenceError(error);
+    } catch (_) {
       return null;
     }
-  }
-
-  bool get hasValidLicence => _licenceConfigured;
-
-  /// O nativo revalida a licença em toda operação. Se ela deixou de ser válida
-  /// (`LICENCE_ERROR`/`LICENCE_NOT_INITIALIZED`), a próxima operação refaz o initPayment.
-  void _handleLicenceError(Object error) {
-    if (error is PlatformException &&
-        (error.code == 'LICENCE_ERROR' ||
-            error.code == 'LICENCE_NOT_INITIALIZED')) {
-      _licenceConfigured = false;
-    }
-  }
-
-  void _updateLicenceKeys(String licenceKey, String licenceInternalKey) {
-    _licenceKey = licenceKey;
-    _licenceInternalKey = licenceInternalKey;
-    _licenceConfigured = false;
-  }
-
-  Future<void> _scheduleLicenceSync() async {
-    try {
-      await channel.invokeMethod('initPayment', {
-        'licenceKey': _licenceKey,
-        'licenceInternalKey': _licenceInternalKey,
-      });
-      _licenceConfigured = true;
-    } catch (error) {
-      _licenceConfigured = false;
-      rethrow;
-    }
-  }
-
-  Future<void> _ensureLicenceSynced() async {
-    if (_licenceConfigured) {
-      return;
-    }
-
-    await _scheduleLicenceSync();
   }
 
   Map<String, dynamic> _lineToMethodChannel({

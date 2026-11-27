@@ -1,3 +1,27 @@
+## 3.0.0
+
+> Projeto open source sob licença MIT. Toda a licença paga e a cobrança foram removidas.
+
+- **BREAKING:** licença/cobrança removidas. O plugin não valida mais licença, não guarda cache de licença e não faz nenhuma chamada HTTP a servidores da JY Labtech.
+- **BREAKING:** parâmetros e métodos removidos:
+  - `licenceKey` e `licenceInternalKey` de `MSitefPaymentTech.I.initPayment` (agora `initPayment()`, sem parâmetros) e de `Payment.create` (agora `Payment.create({MethodChannel channel})`);
+  - `MSitefPaymentTech.I.isLicenceValid` e `Payment.hasValidLicence`;
+  - constante `licenceCheck` e o arquivo `lib/licence/constants/licence_constants.dart`;
+  - códigos de erro `LICENCE_ERROR`, `LICENCE_NOT_INITIALIZED` e `INVALID_ARGUMENT`;
+  - método nativo `initPayment` do canal (o `initPayment()` do Dart só cria o objeto).
+- **BREAKING:** o `MethodChannel` público passou de `channel` (em `licence_constants.dart`) para `msitefChannel` (`lib/payments/constants/channel_constants.dart`). `CHANNEL_NAME` continua igual.
+- Nativo: removidas as classes de licença (`LicenceConfig`, `LicenceRules`, `CheckLicenceTech`, `CheckLicenceEntity`, `LicenceProvider`, `LicenceResult`, `EncryptedLicenceStorage`, `LicenceStorage`, `LicenceNetwork`, `LicenceClock`) e o gate por operação (`withValidLicence`). `transactionMsitef`, `menuMSitef` e `action` chamam o m-SiTef direto, com a mesma resposta única ao `result`.
+- Dependências Android removidas: `androidx.security:security-crypto` e `okhttp` (sem uso fora da licença).
+- Projeto open source sob a licença **MIT** (antes BSD 3-Clause).
+- README reescrito: funcionalidades, requisitos, configuração Android, referência da API, exemplos por operação, erros, testes e guia de migração.
+- O import principal (`package:msitef_payment_tech/msitef_payment_tech.dart`) agora exporta `Payment`, `TransactionParams`, `MSitefType`, `TefTransactionResponseMSitef`, `TefHelper` e os demais modelos. Os imports antigos de `payments/...` continuam funcionando.
+- Correção: campos opcionais nulos (`comExternal`, `enabledTransactions`, `tokenRegistroTls` etc.) não derrubam mais a operação no nativo (eram comparados com `.equals("")` e geravam `NullPointerException`).
+- Correção: cada operação usa um intent e uma resposta novos, sem herdar extras ou campos da operação anterior.
+- Testes: Dart (`test/payment_test.dart`, 15 testes: contrato do canal, modalidades, respostas, erros, modelos e helpers) e JVM no módulo nativo (14 testes: extras do intent, comunicação externa e respostas do plugin). Os testes de licença foram apagados.
+- Example: removidos os campos e chaves de licença; data e hora fiscais no formato `AAAAMMDD`/`HHMMSS`.
+- Binários pré-compilados (`android/libs`) regenerados, sem nenhuma classe de licença.
+- `.pubignore`: o fonte nativo (`android/native`) passa a ser publicado; continuam fora segredos (`example/Chaves`, `*.jks`, `*.keystore`, `local.properties`, `key.properties`), `doc/`, `*.hprof` e `build/`.
+
 ## 2.3.0
 
 - Licença conforme o contrato do jylabtech_core (JYN-234): o cache offline vale por no máximo 72 horas (antes 7 dias) e só é usado quando o servidor não responde (sem internet, timeout, 5xx).

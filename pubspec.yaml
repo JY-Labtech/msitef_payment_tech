@@ -1,7 +1,15 @@
 name: msitef_payment_tech
-description: Plugin Flutter para integrar sua aplicação com o SDK Android do MSitef para meios de pagamento.
-version: 2.3.0
+description: Flutter plugin for Android that integrates your app with the m-SiTef TEF app (Software Express) via intent - credit, debit, PIX, voucher, refund and reprint.
+version: 3.0.0
+homepage: https://github.com/JY-Labtech/msitef_payment_tech
 repository: https://github.com/JY-Labtech/msitef_payment_tech
+issue_tracker: https://github.com/JY-Labtech/msitef_payment_tech/issues
+topics:
+  - payment
+  - pos
+  - tef
+  - android
+  - brazil
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

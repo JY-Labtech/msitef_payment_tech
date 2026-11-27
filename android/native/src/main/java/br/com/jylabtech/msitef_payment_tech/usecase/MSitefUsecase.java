@@ -4,35 +4,33 @@ package br.com.jylabtech.msitef_payment_tech.usecase;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import io.flutter.plugin.common.MethodCall;
 
 public class MSitefUsecase {
 
-    private Intent intentMSitef;
+    /** Action do m-SiTef (app da Software Express). */
+    public static final String MSITEF_ACTION = "br.com.softwareexpress.sitef.msitef.ACTIVITY_CLISITEF";
+
     private JSONObject jsonCampos;
 
-    protected class RequestCode {
+    protected static class RequestCode {
         protected static final int PERFORM_TRANSACTION_MSITEF = 1234;
     }
 
-    private void inicializeIntentMSitef() {
-        if (intentMSitef == null) {
-            try {
-                intentMSitef = new Intent("br.com.softwareexpress.sitef.msitef.ACTIVITY_CLISITEF");
-            } catch (Exception e) {
-            }
-        }
+    private static boolean isFilled(String value) {
+        return value != null && !value.isEmpty();
     }
 
-    public void mSitefMenu(Activity activity, MethodCall call) {
+    /** Monta os extras do intent do menu administrativo (modalidade 110). */
+    public static Map<String, String> buildMenuExtras(MethodCall call) {
         String storeMSitef = call.argument("storeId");
         String serverIP = call.argument("ipSitef");
         String companyDoc = call.argument("companyDocument");
@@ -44,43 +42,32 @@ public class MSitefUsecase {
         String terminalMSitef = call.argument("terminalId");
         String tokenRegistroTls = call.argument("tokenRegistroTls");
 
-        inicializeIntentMSitef();
-        intentMSitef.putExtra("tipoPinpad", "ANDROID_USB");
-        intentMSitef.putExtra("empresaSitef", storeMSitef);
-        intentMSitef.putExtra("enderecoSitef", serverIP);
-        intentMSitef.putExtra("modalidade", "110");
-        intentMSitef.putExtra("CNPJ_CPF", companyDoc);
-        intentMSitef.putExtra("cnpj_automacao", autDocument);
-        intentMSitef.putExtra("habilitaTrace", "1");
-        intentMSitef.putExtra("chaveTrace", "FB20144EE4283A58");
-        intentMSitef.putExtra("terminalSitef", terminalMSitef);
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("tipoPinpad", "ANDROID_USB");
+        extras.put("empresaSitef", storeMSitef);
+        extras.put("enderecoSitef", serverIP);
+        extras.put("modalidade", "110");
+        extras.put("CNPJ_CPF", companyDoc);
+        extras.put("cnpj_automacao", autDocument);
+        extras.put("habilitaTrace", "1");
+        extras.put("chaveTrace", "FB20144EE4283A58");
+        extras.put("terminalSitef", terminalMSitef);
 
-        if (!transactionsMsitef.equals("")) {
-            intentMSitef.putExtra("transacoesHabilitadas", transactionsMsitef);
-        }
-        
-        if (!tokenRegistroTls.equals("")) {
-            intentMSitef.putExtra("tokenRegistroTls", tokenRegistroTls);
+        if (isFilled(transactionsMsitef)) {
+            extras.put("transacoesHabilitadas", transactionsMsitef);
         }
 
-        if (!comExternaMsitef.equals("")) {
-            intentMSitef.putExtra("comExterna", comExternaMsitef);
-            switch (comExternaMsitef) {
-                case "1":
-                    intentMSitef.putExtra("isDoubleValidation", doubleValidationMsitef);
-                case "2":
-                case "3":
-                    intentMSitef.putExtra("otp", otpMsitef);
-                default:
-                    break;
-            }
-
+        if (isFilled(tokenRegistroTls)) {
+            extras.put("tokenRegistroTls", tokenRegistroTls);
         }
-        activity.startActivityForResult(intentMSitef, RequestCode.PERFORM_TRANSACTION_MSITEF);
+
+        putExternalCommunication(extras, comExternaMsitef, doubleValidationMsitef, otpMsitef);
+        return extras;
     }
 
-    public void mSitefTransaction(Activity activity, MethodCall call) {
-        int modalityMSitefI = call.argument("modalidade");
+    /** Monta os extras do intent de uma transação (crédito, débito, PIX, cancelamento etc.). */
+    public static Map<String, String> buildTransactionExtras(MethodCall call) {
+        Object modalityArg = call.argument("modalidade");
         String companySitef = call.argument("storeId");
         String ipSitef = call.argument("ipSitef");
         String terminal = call.argument("terminalId");
@@ -96,66 +83,95 @@ public class MSitefUsecase {
         String enabledTransaction = call.argument("enabledTransactions");
         String automationDocumentResponse = call.argument("automationDocument");
 
+        String modalityMSitef = modalityArg == null ? "0" : String.valueOf(modalityArg);
 
-        String modalityMSitef = String.valueOf(modalityMSitefI);
-
-
-        inicializeIntentMSitef();
-
-        intentMSitef.putExtra("tipoPinpad", "ANDROID_USB");
-        intentMSitef.putExtra("empresaSitef", companySitef);
-        intentMSitef.putExtra("enderecoSitef", ipSitef);
-        intentMSitef.putExtra("terminalSitef", terminal);
-        intentMSitef.putExtra("operador", operator);
-        intentMSitef.putExtra("data", date);
-        intentMSitef.putExtra("hora", hour);
-        intentMSitef.putExtra("numeroCupom", couponNumber);
-        intentMSitef.putExtra("modalidade", modalityMSitef);
-        intentMSitef.putExtra("valor", value);
-        intentMSitef.putExtra("CNPJ_CPF", companyDocument);
-        intentMSitef.putExtra("timeoutColeta", "30");
-        intentMSitef.putExtra("acessibilidadeVisual", "0");
-        intentMSitef.putExtra("habilitaTrace", "1");
-        intentMSitef.putExtra("chaveTrace", "FB20144EE4283A58");
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("tipoPinpad", "ANDROID_USB");
+        extras.put("empresaSitef", companySitef);
+        extras.put("enderecoSitef", ipSitef);
+        extras.put("terminalSitef", terminal);
+        extras.put("operador", operator);
+        extras.put("data", date);
+        extras.put("hora", hour);
+        extras.put("numeroCupom", couponNumber);
+        extras.put("modalidade", modalityMSitef);
+        extras.put("valor", value);
+        extras.put("CNPJ_CPF", companyDocument);
+        extras.put("timeoutColeta", "30");
+        extras.put("acessibilidadeVisual", "0");
+        extras.put("habilitaTrace", "1");
+        extras.put("chaveTrace", "FB20144EE4283A58");
 
         if (modalityMSitef.equals("122")) {
-            intentMSitef.putExtra("transacoesHabilitadas", "7;");
+            extras.put("transacoesHabilitadas", "7;");
         }
 
-        intentMSitef.putExtra("cnpj_automacao", automationDocumentResponse);
-        if (!enabledTransaction.equals("")) {
-            intentMSitef.putExtra("restricoes", enabledTransaction);
-        }
-        if (!externalComunication.equals("")) {
-
-            intentMSitef.putExtra("comExterna", externalComunication);
-            switch (externalComunication) {
-                case "1":
-                    intentMSitef.putExtra("isDoubleValidation", isDoubleValidarionResponse);
-                    // break;
-                case "2":
-                    // break;
-                case "3":
-                    intentMSitef.putExtra("otp", otpGSurf);
-                    // break;
-            }
-
+        extras.put("cnpj_automacao", automationDocumentResponse);
+        if (isFilled(enabledTransaction)) {
+            extras.put("restricoes", enabledTransaction);
         }
 
-        activity.startActivityForResult(intentMSitef, RequestCode.PERFORM_TRANSACTION_MSITEF);
+        putExternalCommunication(extras, externalComunication, isDoubleValidarionResponse, otpGSurf);
+        return extras;
+    }
+
+    /**
+     * comExterna 1 (GSurf com dupla validação) envia isDoubleValidation e otp;
+     * 2 e 3 enviam só otp (mesmo comportamento do switch com fall-through anterior).
+     */
+    private static void putExternalCommunication(Map<String, String> extras, String comExternal,
+                                                 String isDoubleValidation, String otp) {
+        if (!isFilled(comExternal)) {
+            return;
+        }
+        extras.put("comExterna", comExternal);
+        switch (comExternal) {
+            case "1":
+                extras.put("isDoubleValidation", isDoubleValidation);
+                extras.put("otp", otp);
+                break;
+            case "2":
+            case "3":
+                extras.put("otp", otp);
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** Extras livres de {@code customAction}: o mapa {@code mapMsiTef} enviado pelo Dart. */
+    public static Map<String, String> buildActionExtras(MethodCall call) {
+        Map<String, String> map = call.argument("mapMsiTef");
+        if (map == null) {
+            throw new IllegalArgumentException("customAction exige o parâmetro mapMsiTef (Map<String, String>).");
+        }
+        return new LinkedHashMap<>(map);
+    }
+
+    private static Intent newMSitefIntent(Map<String, String> extras) {
+        Intent intent = new Intent(MSITEF_ACTION);
+        for (Map.Entry<String, String> entry : extras.entrySet()) {
+            intent.putExtra(entry.getKey(), entry.getValue());
+        }
+        return intent;
+    }
+
+    public void mSitefMenu(Activity activity, MethodCall call) {
+        activity.startActivityForResult(newMSitefIntent(buildMenuExtras(call)), RequestCode.PERFORM_TRANSACTION_MSITEF);
+    }
+
+    public void mSitefTransaction(Activity activity, MethodCall call) {
+        activity.startActivityForResult(newMSitefIntent(buildTransactionExtras(call)), RequestCode.PERFORM_TRANSACTION_MSITEF);
     }
 
     public void startAction(Activity activity, MethodCall call) {
-        Map<String, String> map;
         Bundle bundle = new Bundle();
-
-        map = call.argument("mapMsiTef");
-        for (String key : map.keySet()) {
-            bundle.putString(key, map.get(key));
+        for (Map.Entry<String, String> entry : buildActionExtras(call).entrySet()) {
+            bundle.putString(entry.getKey(), entry.getValue());
         }
-        inicializeIntentMSitef();
-        intentMSitef.putExtras(bundle);
-        activity.startActivityForResult(intentMSitef,  RequestCode.PERFORM_TRANSACTION_MSITEF);
+        Intent intent = new Intent(MSITEF_ACTION);
+        intent.putExtras(bundle);
+        activity.startActivityForResult(intent, RequestCode.PERFORM_TRANSACTION_MSITEF);
     }
 
 

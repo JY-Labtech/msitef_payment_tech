@@ -3,10 +3,6 @@ package br.com.jylabtech.msitef_payment_tech.core;
 import android.app.Activity;
 import android.content.Context;
 import androidx.annotation.Nullable;
-import br.com.jylabtech.msitef_payment_tech.licence.CheckLicenceTech;
-import br.com.jylabtech.msitef_payment_tech.licence.LicenceConfig;
-import br.com.jylabtech.msitef_payment_tech.licence.LicenceResult;
-import br.com.jylabtech.msitef_payment_tech.licence.LicenceRules;
 import br.com.jylabtech.msitef_payment_tech.presenter.PaymentsPresenter;
 
 import io.flutter.plugin.common.MethodCall;
@@ -19,18 +15,14 @@ public class MSitefPaymentTech {
 
     private final MethodChannel channel;
     private final Context context;
-    private final CheckLicenceTech licenceTech;
 
     private PaymentsPresenter paymentPresenter;
     private Activity activity;
-    private String licenceKey;
-    private String licenceInternalKey;
 
     public MSitefPaymentTech(Context context, MethodChannel channel, Activity activity) {
         this.context = context;
         this.channel = channel;
         this.activity = activity;
-        this.licenceTech = new CheckLicenceTech(context);
     }
 
     public static boolean isBusinessMethod(String method) {
@@ -43,43 +35,8 @@ public class MSitefPaymentTech {
     }
 
     /**
-     * licenceInternalKey é opcional: vazio/nulo usa a URL oficial. Valores fora do servidor
-     * oficial são ignorados por {@link LicenceConfig#resolveLicenceUrl(String)}.
-     */
-    public void updateLicenceKeys(String licenceKey, @Nullable String licenceInternalKey) {
-        this.licenceKey = licenceKey;
-        this.licenceInternalKey = (licenceInternalKey == null || licenceInternalKey.trim().isEmpty())
-                ? LicenceConfig.LICENCE_CHECK_URL
-                : licenceInternalKey;
-    }
-
-    public boolean hasLicenceKeys() {
-        return licenceKey != null && !licenceKey.trim().isEmpty();
-    }
-
-    /** Verifica somente o cache local válido (sem rede). Pode ser chamado na main thread. */
-    public boolean hasValidCachedLicence() {
-        if (!hasLicenceKeys()) {
-            return false;
-        }
-        return licenceTech.validateExistsLicence(licenceKey, licenceInternalKey);
-    }
-
-    /** Valida a licença (cache válido ou servidor). Faz acesso à rede: não chame na main thread. */
-    public LicenceResult validateLicence() {
-        if (!hasLicenceKeys()) {
-            LicenceResult result = new LicenceResult();
-            result.setResult(LicenceRules.RESULT_ERROR);
-            result.setErrorMessage("licenceKey não configurado. Chame initPayment antes de executar operações.");
-            return result;
-        }
-
-        return licenceTech.validateLicence(licenceKey, licenceInternalKey);
-    }
-
-    /**
-     * Executa a operação no m-SiTef. Deve ser chamado somente depois que a licença foi validada
-     * (ver gate em MSitefPaymentTechNativePlugin).
+     * Executa a operação no m-SiTef (abre o app da Software Express via intent).
+     * A resposta chega por {@code onActivityResult} em MSitefPaymentTechNativePlugin.
      */
     public void handleMethodCall(MethodCall call, MethodChannel.Result result) throws Exception {
         ensurePresenter();

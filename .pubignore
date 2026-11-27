@@ -35,3 +35,10 @@ example/Chaves/
 **/key.properties
 .DS_Store
 **/.DS_Store
+
+# Segredos, documentação interna e artefatos de build
+*.jks
+*.keystore
+doc/
+*.hprof
+**/build/

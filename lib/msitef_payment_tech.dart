@@ -1,7 +1,18 @@
+import 'package:msitef_payment_tech/payments/constants/channel_constants.dart';
 import 'package:msitef_payment_tech/payments/payment.dart';
 
-import 'licence/constants/licence_constants.dart';
+export 'payments/constants/channel_constants.dart';
+export 'payments/enum/sitef_modality.dart';
+export 'payments/helper/tef_helper.dart';
+export 'payments/model/params/msitef_params.dart';
+export 'payments/model/params/msitef_type.dart';
+export 'payments/model/params/transaction_params.dart';
+export 'payments/model/tef_transaction_model.dart';
+export 'payments/model/tef_transaction_response.dart';
+export 'payments/payment.dart';
 
+/// Ponto de entrada do plugin: integra o app Flutter com o m-SiTef
+/// (Software Express) via intent no Android.
 final class MSitefPaymentTech {
   static MSitefPaymentTech? _instance;
 
@@ -9,41 +20,30 @@ final class MSitefPaymentTech {
 
   MSitefPaymentTech._internal();
 
+  /// Instância única do plugin.
   static MSitefPaymentTech get I {
     _instance ??= MSitefPaymentTech._internal();
     return _instance!;
   }
 
-  /// Configura e valida a licença no servidor da JY Labtech.
+  /// Inicializa o plugin e devolve o [Payment] usado nas operações.
   ///
-  /// [licenceInternalKey] é opcional (padrão: [licenceCheck]). Valores que não apontem
-  /// para o servidor oficial são ignorados pelo nativo. Lança [PlatformException]
-  /// (`LICENCE_ERROR`) se a licença for inválida, vencida, suspensa ou cancelada.
-  Future<Payment> initPayment({
-    required String licenceKey,
-    String licenceInternalKey = licenceCheck,
-  }) async {
-    final payment = await Payment.create(
-      channel: channel,
-      licenceKey: licenceKey,
-      licenceInternalKey: licenceInternalKey,
-    );
-    _payment = payment;
+  /// Não faz chamada de rede nem ao nativo; pode ser chamado mais de uma vez
+  /// (devolve sempre a mesma instância).
+  Future<Payment> initPayment() async {
+    _payment = await Payment.create(channel: msitefChannel);
     return _payment!;
   }
 
+  /// [Payment] inicializado por [initPayment].
+  ///
+  /// Lança [Exception] se [initPayment] ainda não foi chamado.
   Payment get payment {
     if (_payment == null) {
       throw Exception(
-        'Payment not initialized. Call initPayment(licenceKey: ...) first.',
+        'Payment not initialized. Call MSitefPaymentTech.I.initPayment() first.',
       );
     }
     return _payment!;
   }
-
-  bool get isLicenceValid => _payment?.hasValidLicence ?? false;
 }
-
-//Fixed channel name
-// ignore: constant_identifier_names
-const CHANNEL_NAME = "msitef_payment_tech";
